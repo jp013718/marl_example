@@ -11,8 +11,69 @@ class MarlEnvironment(ParallelEnv):
     "render_fps": 10
   }
   
-  def __init__(self):
-    pass
+  def __init__(
+      self, 
+      mapsize: int=100, 
+      max_timesteps: int=1000, 
+      num_agents: int=3, 
+      num_near_agents: int=2, 
+      max_speed: int=5, 
+      max_accel: np.float32=1.0, 
+      max_angular_accel: np.float32=0.2*np.pi, 
+      render_fps: int|None=None, render_state: bool=True
+    ):
+    self.mapsize = mapsize
+    self.max_timesteps = max_timesteps
+    self.num_agents = num_agents
+    self.max_speed = max_speed
+    self.max_accel = max_accel
+    self.max_angular_accel = max_angular_accel
+
+    try:
+      assert num_near_agents < self.num_agents
+    except AssertionError as e:
+      raise e(f"num_near_agents must be less than num_agents. You chose num_agents as {self.num_agents} and num_near_agents as {num_near_agents}")
+    
+    self.num_near_agents = num_near_agents
+
+    self.render_state = render_state
+    self.render_fps = render_fps if render_fps else self.metadata["render_fps"]
+
+    self.targets_x = [0]*self.num_agents
+    self.targets_y = [0]*self.num_agents
+
+    self.agents_x = [0]*self.num_agents
+    self.agents_y = [0]*self.num_agents
+    self.agents_speed = [0]*self.num_agents
+    self.agents_heading = [0]*self.num_agents
+
+    self.timestep = 0
+    self.possible_agents = ["agent"]
+
+    self.observation_spaces = {
+      "agent": spaces.Dict(
+        {
+          "heading": spaces.Box(low=0, high=2*np.pi, shape=(1,), dtype=np.float32),
+          "speed": spaces.Box(low=0, high=self.max_speed, shape=(1,), dtype=np.float32),
+          "target_heading": spaces.Box(low=0, high=2*np.pi, shape=(1,), dtype=np.float32),
+          "target_dist": spaces.Box(low=0, high=self.mapsize, shape=(1,), dtype=np.float32), 
+          "nearby_agents": spaces.Dict(
+            {
+              f"agent_{i}": spaces.Dict(
+                {
+                  "agent_heading": spaces.Box(low=0, high=2*np.pi, shape=(1,), dtype=np.float32),
+                  "agent_dist": spaces.Box(low=0, high=2*np.pi, shape=(1,), dtype=np.float32)
+                }
+              ) for i in range(self.num_near_agents)
+            }
+          )
+        }
+      )
+    }
+
+    self.action_spaces = {
+      "agent": spaces.Box(low=(0, 0), high=(self.max_angular_accel, self.max_accel), shape=(2,), dtype=np.float32)
+    }
 
   def reset(self, seed=None, options=None):
     pass

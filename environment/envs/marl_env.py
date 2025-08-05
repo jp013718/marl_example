@@ -102,16 +102,16 @@ class MarlEnvironment(ParallelEnv):
 
   def step(self):
     for agent in self.agents:
-      agent.get_action()
-      self.agents_angular_vel[i] += action[0]
-      self.agents_speed[i] += action[1]
+      action = agent.get_action(observations[agent.name])
+      agent.angular_vel += action[0]
+      agent.speed += action[1]
 
-      self.agents_heading[i] += self.agents_angular_vel[i]
-      self.agents_x[i] += self.agents_speed[i]*np.cos(self.agents_heading[i])
-      self.agents_y[i] += self.agents_speed[i]*np.sin(self.agents_heading[i])
+      agent.heading += agent.angular_vel
+      agent.x += agent.speed*np.cos(agent.heading)
+      self.agent.y += agent.speed*np.sin(agent.heading)
 
     observations = self._get_obs()
-    rewards = self._get_rewards(observations, actions)
+    rewards = self._get_rewards(observations)
     terminations = self._get_terms()
     truncations = self._get_truncs()
     infos = self._get_infos()

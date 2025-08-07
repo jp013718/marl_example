@@ -18,19 +18,20 @@ class MarlEnvironment(ParallelEnv):
       self, 
       mapsize: int=100, 
       max_timesteps: int=1000, 
-      num_agents: int=3, 
+      agents: list[Agent] = [Agent()]*3,
       num_near_agents: int=2, 
       max_speed: int=5, 
       max_accel: np.float32=1.0, 
       max_angular_accel: np.float32=0.2*np.pi, 
       render_fps: int|None=None, 
-       render_mode: bool=True,
+      render_mode: bool=True,
       render_vectors: bool=True,
   ):
     
     self.mapsize = mapsize
     self.max_timesteps = max_timesteps
-    self.num_agents = num_agents
+    self.agents_list = agents
+    self.num_agents = len(self.agents_list)
     self.max_speed = max_speed
     self.max_accel = max_accel
     self.max_angular_accel = max_angular_accel
@@ -41,10 +42,11 @@ class MarlEnvironment(ParallelEnv):
       raise e(f"num_near_agents must be less than num_agents. You chose num_agents as {num_agents} and num_near_agents as {num_near_agents}")
     
     self.num_near_agents = num_near_agents
-
     self.render_mode =  render_mode
     self.render_fps = render_fps if render_fps else self.metadata["render_fps"]
     self.render_vectors = render_vectors
+
+    self.agents = [f"agent_{i}" for i in range(self.num_agents)]
 
     self.targets_x = [0]*self.num_agents
     self.targets_y = [0]*self.num_agents
@@ -83,14 +85,12 @@ class MarlEnvironment(ParallelEnv):
       "agent": spaces.Box(low=(-self.max_angular_accel, -self.max_accel), high=(self.max_angular_accel, self.max_accel), shape=(2,), dtype=np.float32)
     }
 
-    self.agents = [Agent(f"agent_{i}", self.action_space("agent")) for i in range(num_agents)]
-
   def reset(self, seed=None, options=None):
     super().reset(seed=seed)
 
     self.timestep = 0
 
-    for i, agent in enumerate(self.agents):
+    for i, agent in enumerate(self.agents_list):
       agent.reset()
       agent.x, agent.y = Generator.random(size=2)*self.mapsize
       self.targets_x[i], self.targets_y[i] = Generator.random(size=2)*self.mapsize
@@ -100,18 +100,18 @@ class MarlEnvironment(ParallelEnv):
 
     return observations, infos
 
-  def step(self):
-    for agent in self.agents:
-      action = agent.get_action(observations[agent.name])
+  def step(self, actions):
+    for agent in self.agents_list:
+      action = actions[agent.name]
       agent.angular_vel += action[0]
       agent.speed += action[1]
 
       agent.heading += agent.angular_vel
       agent.x += agent.speed*np.cos(agent.heading)
-      self.agent.y += agent.speed*np.sin(agent.heading)
+      agent.y += agent.speed*np.sin(agent.heading)
 
     observations = self._get_obs()
-    rewards = self._get_rewards(observations)
+    rewards = self._get_rewards(observations, actions)
     terminations = self._get_terms()
     truncations = self._get_truncs()
     infos = self._get_infos()
@@ -121,10 +121,39 @@ class MarlEnvironment(ParallelEnv):
     return observations, rewards, terminations, truncations, infos
 
   def _get_obs(self):
-    pass
+    observations = {agent.name: {} for agent in self.agents_list}
+    
+    for agent, target in zip(self.agents_list, zip(self.targets_x, self.targets_y)):
+      neighbors = [neighbor for neighbor in self.agents_list if neighbor.name != agent.name].sort(key=lambda neighbor: np.sqrt((agent.x-neighbor.x)**2+(agent.y-neighbor.y)**2))
+      
+      observations["agent.name"].update(
+        {
+          "heading": agent.heading,
+          "speed": agent.speed,
+          "target_heading": np.atan2(agent.y-target[1], agent.x-target[0]) - agent.heading,
+          "target_dist": np.sqrt((agent.x-target[0])**2+(agent.y-target[1])**2),
+          "nearby_agents": {
+            f"agent_{i}": {
+              "agent_heading": np.atan2(agent.y-neighbors[i].y, agent.x-neighbors[i].x) - agent.heading,
+              "agent_dist": np.sqrt((agent.x-neighbors[i].x)**2+(agent.y-neighbors[i].y)**2),
+            } for i in range(self.num_near_agents)
+          }
+        }
+      )
+
+    return observations
 
   def _get_rewards(self, observations, actions):
-    pass
+    r_neighbor_prox = -10
+    r_target_prox = 50
+    
+    rewards = {agent.name: 0 for agent in self.agents_list}
+
+    for agent, target in zip(self.agents_list, zip(self.targets_x, self.targets_y)):
+      neighbors = [neighbor for neighbor in self.agents_list if neighbor.name != agent.name].sort(key=lambda neighbor: np.sqrt((agent.x-neighbor.x)**2+(agent.y-neighbor.y)**2))
+      for neighbor in neighbors:
+        rewards[agent.name] += r_neighbor_prox/np.sqrt((agent.x-neighbor.x)**2+(agent.y-neighbor.y)**2)
+        rewards[agent.name] += r_target_prox/np.sqrt((agent.x-target[0])**2+(agent.y-target[1])**2)
 
   def _get_terms(self):
     pass

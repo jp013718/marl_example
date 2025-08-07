@@ -18,6 +18,8 @@ class Agent:
     self.speed = 0
     self.heading = 0
     self.angular_vel = 0
+    self.accel = 0
+    self.angular_accel = 0
     self.model_type = model_type
     
     if self.model_type:
@@ -35,8 +37,10 @@ class Agent:
     self.x = 0
     self.y = 0
     self.speed = 0
+    self.accel = 0
     self.heading = 0
     self.angular_vel = 0
+    self.angular_accel = 0
 
   def _load_model(self, model):
     raise NotImplementedError("Model selection not implemented")

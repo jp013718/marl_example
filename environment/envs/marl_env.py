@@ -11,7 +11,9 @@ from common.agent import Agent
 class MarlEnvironment(ParallelEnv):
   metadata = {
     "name": "Marl_Environment",
-    "render_fps": 10
+    "render_fps": 10,
+    "agent_radius": 0.5,
+    "goal_radius": 2.5
   }
   
   def __init__(
@@ -21,8 +23,9 @@ class MarlEnvironment(ParallelEnv):
       agents: list[Agent] = [Agent()]*3,
       num_near_agents: int=2, 
       max_speed: int=5, 
+      max_angular_speed: np.float32=10*np.pi,
       max_accel: np.float32=1.0, 
-      max_angular_accel: np.float32=0.2*np.pi, 
+      max_angular_accel: np.float32=1*np.pi, 
       render_fps: int|None=None, 
       render_mode: bool=True,
       render_vectors: bool=True,
@@ -33,6 +36,7 @@ class MarlEnvironment(ParallelEnv):
     self.agents_list = agents
     self.num_agents = len(self.agents_list)
     self.max_speed = max_speed
+    self.max_angular_speed = max_angular_speed
     self.max_accel = max_accel
     self.max_angular_accel = max_angular_accel
 
@@ -104,11 +108,16 @@ class MarlEnvironment(ParallelEnv):
     for agent in self.agents_list:
       action = actions[agent.name]
       agent.angular_vel += action[0]
+      agent.angular_vel = np.minimum(self.max_angular_speed, np.maximum(-self.max_angular_speed, agent.angular_vel))
       agent.speed += action[1]
+      agent.speed = np.minimum(self.max_speed, np.maximum(0, agent.speed))
 
       agent.heading += agent.angular_vel
+      agent.heading += 2*np.pi if agent.heading < 0 else -2*np.pi if agent.heading >= 2*np.pi else 0
       agent.x += agent.speed*np.cos(agent.heading)
+      agent.x = np.minimum(self.mapsize, np.maximum(0, agent.x))
       agent.y += agent.speed*np.sin(agent.heading)
+      agent.y = np.minimum(self.mapsize, np.maximum(0, agent.y))
 
     observations = self._get_obs()
     rewards = self._get_rewards(observations, actions)

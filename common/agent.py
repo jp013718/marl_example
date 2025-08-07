@@ -5,16 +5,18 @@ class Agent:
   def __init__(
       self,
       name: str,
-      action_space: spaces.Space,
       x: np.float32=0.0, 
       y: np.float32=0.0,
+      max_angular_accel: np.float32=0.2*np.pi,
+      max_accel: np.float32=1,
       model_type: str|None=None
   ):
     
     self.name = name
-    self.action_space = action_space
     self.x = x
     self.y = y
+    self.max_angular_accel = max_angular_accel
+    self.max_accel = max_accel
     self.speed = 0
     self.heading = 0
     self.angular_vel = 0
@@ -22,6 +24,8 @@ class Agent:
     self.angular_accel = 0
     self.model_type = model_type
     
+    self.action_space = spaces.Box(low=np.array([-self.max_angular_accel, -self.max_accel]), high=np.array([self.max_angular_accel, self.max_accel]), shape=(2,), dtype=np.float64)
+
     if self.model_type:
       self._load_model(self.model_type)
     else:

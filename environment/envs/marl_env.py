@@ -5,8 +5,6 @@ import gymnasium.spaces as spaces
 
 from pettingzoo import ParallelEnv
 
-from common.agent import Agent
-
 class MarlEnvironment(ParallelEnv):
   metadata = {
     "name": "Marl_Environment",
@@ -17,10 +15,10 @@ class MarlEnvironment(ParallelEnv):
   }
   
   def __init__(
-      self, 
-      agents_list: list[Agent],
+      self,
       mapsize: int=100, 
-      max_timesteps: int=1000, 
+      max_timesteps: int=1000,
+      n_agents: int=3, 
       num_near_agents: int=2, 
       max_speed: np.float64=5, 
       max_angular_speed: np.float64=0.5*np.pi,
@@ -33,12 +31,11 @@ class MarlEnvironment(ParallelEnv):
     self.window_size = 724
     self.mapsize = mapsize
     self.max_timesteps = max_timesteps
-    self.agents_list = agents_list
     self.max_speed = max_speed
     self.max_angular_speed = max_angular_speed
     self.max_accel = max_accel
     self.max_angular_accel = max_angular_accel
-    self.agents = [agent.name for agent in self.agents_list]
+    self.agents = [f"agent_{i}" for i in range(n_agents)]
 
     try:
       assert num_near_agents < self.num_agents
@@ -61,11 +58,13 @@ class MarlEnvironment(ParallelEnv):
     self.targets_x = [0]*self.num_agents
     self.targets_y = [0]*self.num_agents
 
-    # self.agents_x = [0]*self.num_agents
-    # self.agents_y = [0]*self.num_agents
-    # self.agents_speed = [0]*self.num_agents
-    # self.agents_heading = [0]*self.num_agents
-    # self.agents_angular_vel = [0]*self.num_agents
+    self.agents_x = [0]*self.num_agents
+    self.agents_y = [0]*self.num_agents
+    self.agents_speed = [0]*self.num_agents
+    self.agents_heading = [0]*self.num_agents
+    self.agents_angular_vel = [0]*self.num_agents
+    self.agents_angular_accel = [0]*self.num_agents
+    self.agents_accel = [0]*self.num_agents
 
     self.terms = None
 
@@ -83,8 +82,10 @@ class MarlEnvironment(ParallelEnv):
             {
               f"agent_{i}": spaces.Dict(
                 {
+                  "direction_to_agent": spaces.Box(low=0, high=2*np.pi, shape=(1,), dtype=np.float64),
+                  "agent_dist": spaces.Box(low=0, high=2*np.pi, shape=(1,), dtype=np.float64),
                   "agent_heading": spaces.Box(low=0, high=2*np.pi, shape=(1,), dtype=np.float64),
-                  "agent_dist": spaces.Box(low=0, high=2*np.pi, shape=(1,), dtype=np.float64)
+                  "agent_speed": spaces.Box(low=0, high=self.max_speed, shape=(1,), dtype=np.float64)
                 }
               ) for i in range(self.num_near_agents)
             }
@@ -100,11 +101,14 @@ class MarlEnvironment(ParallelEnv):
 
   def reset(self, seed=None, options=None):
     self.timestep = 0
-    self.terms = {agent.name: False for agent in self.agents_list}
+    self.terms = {agent: False for agent in self.agents}
 
-    for i, agent in enumerate(self.agents_list):
-      agent.reset()
-      agent.x, agent.y = np.random.random(size=2)*self.mapsize
+    for i in range(len(self.agents)):
+      self.agents_heading[i] = 0
+      self.agents_speed[i] = 0
+      self.agents_angular_vel[i] = 0
+  
+      self.agents_x[i], self.agents_y[i] = np.random.random(size=2)*self.mapsize
       self.targets_x[i], self.targets_y[i] = np.random.random(size=2)*self.mapsize
 
     if self.render_mode == "human":
@@ -117,29 +121,29 @@ class MarlEnvironment(ParallelEnv):
 
 
   def step(self, actions):
-    for agent in self.agents_list:
-      action = actions[agent.name]
+    for i, agent in enumerate(self.agents):
+      action = actions[agent]
       
       if action is None:
-        agent.accel = 0
-        agent.angular_accel = 0
-        agent.speed = 0
-        agent.angular_vel = 0
+        self.agents_accel[i] = 0
+        self.agents_angular_accel[i] = 0
+        self.agents_speed[i] = 0
+        self.agents_angular_vel[i] = 0
       else:
-        agent.angular_accel = action[0]
-        agent.accel = action[1]
+        self.agents_angular_accel[i] = action[0]
+        self.agents_accel[i] = action[1]
 
-      agent.angular_vel += agent.angular_accel
-      agent.angular_vel = np.minimum(self.max_angular_speed, np.maximum(-self.max_angular_speed, agent.angular_vel))
-      agent.speed += agent.accel
-      agent.speed = np.minimum(self.max_speed, np.maximum(0, agent.speed))
+      self.agents_angular_vel[i] += agent.angular_accel
+      self.agents_angular_vel[i] = np.minimum(self.max_angular_speed, np.maximum(-self.max_angular_speed, self.agents_angular_vel[i]))
+      self.agents_speed[i] += self.agents_accel[i]
+      self.agents_speed[i] = np.minimum(self.max_speed, np.maximum(0, self.agents_speed[i]))
 
-      agent.heading += agent.angular_vel
-      agent.heading += 2*np.pi if agent.heading < 0 else -2*np.pi if agent.heading >= 2*np.pi else 0
-      agent.x += agent.speed*np.cos(agent.heading)
-      agent.x = np.minimum(self.mapsize, np.maximum(0, agent.x))
-      agent.y += agent.speed*np.sin(agent.heading)
-      agent.y = np.minimum(self.mapsize, np.maximum(0, agent.y))
+      self.agents_heading[i] += self.agents_angular_vel[i]
+      self.agents_heading[i] += 2*np.pi if self.agents_heading[i] < 0 else -2*np.pi if self.agents_heading[i] >= 2*np.pi else 0
+      self.agents_x[i] += self.agents_speed[i]*np.cos(self.agents_heading[i])
+      self.agents_x[i] = np.minimum(self.mapsize, np.maximum(0, self.agents_x[i]))
+      self.agents_y[i] += self.agents_speed[i]*np.sin(self.agents_heading[i])
+      self.agents_y[i] = np.minimum(self.mapsize, np.maximum(0, self.agents_y[i]))
 
     if self.render_mode == "human":
       self._render_frame()
@@ -156,23 +160,26 @@ class MarlEnvironment(ParallelEnv):
 
 
   def _get_obs(self):
-    observations = {agent.name: {} for agent in self.agents_list}
+    observations = {agent: {} for agent in self.agents}
     
-    for agent, target in zip(self.agents_list, zip(self.targets_x, self.targets_y)):
-      neighbors = [neighbor for neighbor in self.agents_list if neighbor.name != agent.name]
-      neighbors.sort(key=lambda neighbor: np.sqrt((agent.x-neighbor.x)**2+(agent.y-neighbor.y)**2))
+    for i, target_pos in enumerate(zip(self.targets_x, self.targets_y)):
+      neighbors = list(range(self.num_agents))
+      neighbors.remove(i)
+      neighbors.sort(key=lambda idx: np.sqrt((self.agents_x[i]-self.agents_x[idx])**2+(self.agents_y[i]-self.agents_y[idx])**2))
 
-      observations[agent.name].update(
+      observations[self.agents[i]].update(
         {
-          "heading": agent.heading,
-          "speed": agent.speed,
-          "target_heading": np.atan2(agent.y-target[1], agent.x-target[0]) - agent.heading,
-          "target_dist": np.sqrt((agent.x-target[0])**2+(agent.y-target[1])**2),
+          "heading": self.agents_heading[i],
+          "speed": self.agents_speed[i],
+          "target_heading": np.atan2(self.agents_y[i]-target_pos[1], self.agents_x[i]-target_pos[0]) - self.agents_heading[i],
+          "target_dist": np.sqrt((self.agents_x[i]-target_pos[0])**2+(self.agents_y[i]-target_pos[1])**2),
           "nearby_agents": {
-            f"agent_{i}": {
-              "agent_heading": np.atan2(agent.y-neighbors[i].y, agent.x-neighbors[i].x) - agent.heading,
-              "agent_dist": np.sqrt((agent.x-neighbors[i].x)**2+(agent.y-neighbors[i].y)**2),
-            } for i in range(self.num_near_agents)
+            f"agent_{j}": {
+              "direction_to_agent": np.atan2(self.agents_y[i]-self.agents_y[neighbors[j]], self.agents_x[i]-self.agents_x[neighbors[j]]) - self.agents_heading[i],
+              "agent_dist": np.sqrt((self.agents_x[i]-self.agents_x[neighbors[j]])**2+(self.agents_y[i]-self.agents_y[neighbors[j]])**2),
+              "agent_heading": self.agents_heading[neighbors[j]],
+              "agent_speed": self.agents_speed[neighbors[j]],
+            } for j in range(self.num_near_agents)
           }
         }
       )
@@ -183,16 +190,18 @@ class MarlEnvironment(ParallelEnv):
   def _get_rewards(self, observations, actions):
     r_neighbor_prox = -10
     r_target_prox = 50
-    r_target_reached = 100
+    r_target_reached = 1000
     
-    rewards = {agent.name: 0 for agent in self.agents_list}
+    rewards = {agent: 0 for agent in self.agents}
+
+    ####### TODO: FIX THIS!!! ########
 
     for agent, target in zip(self.agents_list, zip(self.targets_x, self.targets_y)):
       neighbors = [neighbor for neighbor in self.agents_list if neighbor.name != agent.name]
       neighbors.sort(key=lambda neighbor: np.sqrt((agent.x-neighbor.x)**2+(agent.y-neighbor.y)**2))
       for neighbor in neighbors:
         rewards[agent.name] += r_neighbor_prox/np.sqrt((agent.x-neighbor.x)**2+(agent.y-neighbor.y)**2)
-        rewards[agent.name] += r_target_prox/np.sqrt((agent.x-target[0])**2+(agent.y-target[1])**2)
+        rewards[agent.name] += r_target_prox/np.sqrt((agent.x-target[0])**2+(agent.y-target[1])**2)*(np.atan2(agent.y-target[1], agent.x-target[0])-agent.heading)
         rewards[agent.name] += r_target_reached if np.sqrt((agent.x-target[0])**2+(agent.y-target[1])**2) < self.metadata["target_radius"] else 0
 
     return rewards

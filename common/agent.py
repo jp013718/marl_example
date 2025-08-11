@@ -9,7 +9,8 @@ class Agent:
       y: np.float32=0.0,
       max_angular_accel: np.float32=0.2*np.pi,
       max_accel: np.float32=1,
-      model_type: str|None=None
+      model_type: str|None=None,
+      training: bool=False
   ):
     
     self.name = name
@@ -23,6 +24,7 @@ class Agent:
     self.accel = 0
     self.angular_accel = 0
     self.model_type = model_type
+    self.training = training
     
     self.action_space = spaces.Box(low=np.array([-self.max_angular_accel, -self.max_accel]), high=np.array([self.max_angular_accel, self.max_accel]), shape=(2,), dtype=np.float64)
 
@@ -33,7 +35,7 @@ class Agent:
 
   def get_action(self, observation):
     if self.model:
-      self.model.get_action(observation)
+      return self.model.get_action(observation)
     else:
       return self.action_space.sample()
 

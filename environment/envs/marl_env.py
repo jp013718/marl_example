@@ -46,9 +46,9 @@ class MarlEnvironment(ParallelEnv):
     self.render_mode =  render_mode
 
     try: 
-      assert self.render_mode in self.metadata["render_modes"]
+      assert self.render_mode in self.metadata["render_modes"] or self.render_mode is None
     except AssertionError as e:
-      raise e(f"Invalid render mode {self.render_mode}. Choose from {self.metadata["render_modes"]}")
+      raise e(f'Invalid render mode {self.render_mode}. Choose from {self.metadata["render_modes"]}')
 
     self.render_fps = render_fps if render_fps else self.metadata["render_fps"]
     self.render_vectors = render_vectors
@@ -74,6 +74,8 @@ class MarlEnvironment(ParallelEnv):
     self.observation_spaces = {
       "agent": spaces.Dict(
         {
+          "x": spaces.Box(low=0, high=self.mapsize, shape=(1,), dtype=np.float64),
+          "y": spaces.Box(low=0, high=self.mapsize, shape=(1,), dtype=np.float64),
           "heading": spaces.Box(low=0, high=2*np.pi, shape=(1,), dtype=np.float64),
           "speed": spaces.Box(low=0, high=self.max_speed, shape=(1,), dtype=np.float64),
           "target_heading": spaces.Box(low=0, high=2*np.pi, shape=(1,), dtype=np.float64),
@@ -167,6 +169,8 @@ class MarlEnvironment(ParallelEnv):
 
       observations[self.agents[i]].update(
         {
+          "x": self.agents_x[i],
+          "y": self.agents_y[i],
           "heading": self.agents_heading[i],
           "speed": self.agents_speed[i],
           "target_heading": np.atan2(self.agents_y[i]-target_pos[1], self.agents_x[i]-target_pos[0]) - self.agents_heading[i],

@@ -1,7 +1,7 @@
 import sys
 sys.path.append("..")
 
-from agent import Agent
+from models.maddpg.agent import Agent
 from environment.envs.marl_env import MarlEnvironment
 
 if __name__ == "__main__":

@@ -5,9 +5,8 @@ from agent import Agent
 from environment.envs.marl_env import MarlEnvironment
 
 if __name__ == "__main__":
-  agents = [Agent(name=f"agent_{i}") for i in range(5)]
+  # agents = [Agent(name=f"agent_{i}") for i in range(5)]
   env = MarlEnvironment(
-    agents_list=agents,
     mapsize=50
   )
 
@@ -16,15 +15,15 @@ if __name__ == "__main__":
 
   while completed_episodes < episodes:
     observations, infos = env.reset()
-    terminated = {agent.name: False for agent in agents}
-    truncated = {agent.name: False for agent in agents}
+    terminated = {agent: False for agent in env.agents}
+    truncated = {agent: False for agent in env.agents}
 
     while not (all(terminated.values()) or all(truncated.values())):
       env.render()
 
       actions = {}
-      for agent in agents:
-        actions[agent.name] = agent.get_action(observations[agent.name]) if not (terminated[agent.name] or truncated[agent.name]) else None
+      for agent in env.agents:
+        actions[agent] = env.action_space("agent").sample() if not (terminated[agent] or truncated[agent]) else None
 
       observations, rewards, terminated, truncated, infos = env.step(actions)
     

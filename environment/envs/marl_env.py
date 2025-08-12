@@ -133,7 +133,7 @@ class MarlEnvironment(ParallelEnv):
         self.agents_angular_accel[i] = action[0]
         self.agents_accel[i] = action[1]
 
-      self.agents_angular_vel[i] += agent.angular_accel
+      self.agents_angular_vel[i] += self.agents_angular_accel[i]
       self.agents_angular_vel[i] = np.minimum(self.max_angular_speed, np.maximum(-self.max_angular_speed, self.agents_angular_vel[i]))
       self.agents_speed[i] += self.agents_accel[i]
       self.agents_speed[i] = np.minimum(self.max_speed, np.maximum(0, self.agents_speed[i]))
@@ -163,9 +163,7 @@ class MarlEnvironment(ParallelEnv):
     observations = {agent: {} for agent in self.agents}
     
     for i, target_pos in enumerate(zip(self.targets_x, self.targets_y)):
-      neighbors = list(range(self.num_agents))
-      neighbors.remove(i)
-      neighbors.sort(key=lambda idx: np.sqrt((self.agents_x[i]-self.agents_x[idx])**2+(self.agents_y[i]-self.agents_y[idx])**2))
+      neighbors = self._get_neighbors(i)
 
       observations[self.agents[i]].update(
         {
@@ -194,40 +192,46 @@ class MarlEnvironment(ParallelEnv):
     
     rewards = {agent: 0 for agent in self.agents}
 
-    ####### TODO: FIX THIS!!! ########
-
-    for agent, target in zip(self.agents_list, zip(self.targets_x, self.targets_y)):
-      neighbors = [neighbor for neighbor in self.agents_list if neighbor.name != agent.name]
-      neighbors.sort(key=lambda neighbor: np.sqrt((agent.x-neighbor.x)**2+(agent.y-neighbor.y)**2))
-      for neighbor in neighbors:
-        rewards[agent.name] += r_neighbor_prox/np.sqrt((agent.x-neighbor.x)**2+(agent.y-neighbor.y)**2)
-        rewards[agent.name] += r_target_prox/np.sqrt((agent.x-target[0])**2+(agent.y-target[1])**2)*(np.atan2(agent.y-target[1], agent.x-target[0])-agent.heading)
-        rewards[agent.name] += r_target_reached if np.sqrt((agent.x-target[0])**2+(agent.y-target[1])**2) < self.metadata["target_radius"] else 0
+    for i, target_pos in enumerate(zip(self.targets_x, self.targets_y)):
+      neighbors = self._get_neighbors(i)
+      
+      for j in neighbors:
+        rewards[self.agents[i]] += r_neighbor_prox/np.sqrt((self.agents_x[i]-self.agents_x[j])**2+(self.agents_y[i]-self.agents_y[j])**2)
+      
+      rewards[self.agents[i]] += r_target_prox/np.sqrt((self.agents_x[i]-target_pos[0])**2+(self.agents_y[i]-target_pos[1])**2)*(np.atan2(self.agents_y[i]-target_pos[1], self.agents_x[i]-target_pos[0])-self.agents_heading[i])
+      rewards[self.agents[i]] += r_target_reached if np.sqrt((self.agents_x[i]-target_pos[0])**2+(self.agents_y[i]-target_pos[1])**2) < self.metadata["target_radius"] else 0
 
     return rewards
 
 
   def _get_terms(self):
-    for i, agent in enumerate(self.agents_list):
-      if not self.terms[agent.name]:
-        neighbors = [neighbor for neighbor in self.agents_list if neighbor.name != agent.name]
-        neighbors.sort(key=lambda neighbor: np.sqrt((agent.x-neighbor.x)**2+(agent.y-neighbor.y)**2))
-        self.terms[agent.name] = np.sqrt((agent.x-neighbors[0].x)**2+(agent.y-neighbors[0].y)**2) <= 2*self.metadata["agent_radius"] or np.sqrt((agent.x-self.targets_x[i])**2+(agent.y-self.targets_y[i])**2) < self.metadata["target_radius"]
+    for i, agent in enumerate(self.agents):
+      if not self.terms[agent]:
+        neighbors = self._get_neighbors(i)
+        self.terms[agent] = np.sqrt((self.agents_x[i]-self.agents_x[neighbors[0]])**2+(self.agents_y[i]-self.agents_y[neighbors[0]])**2) <= 2*self.metadata["agent_radius"] or np.sqrt((self.agents_x[i]-self.targets_x[i])**2+(self.agents_y[i]-self.targets_y[i])**2) < self.metadata["target_radius"]
 
     return self.terms
 
 
   def _get_truncs(self):
-    return {agent.name: False if self.timestep < self.max_timesteps else True for agent in self.agents_list}
+    return {agent: False if self.timestep < self.max_timesteps else True for agent in self.agents}
   
 
   def _get_infos(self):
-    return {agent.name: {} for agent in self.agents_list}
+    return {agent: {} for agent in self.agents}
 
 
   def render(self):
     if self.render_mode == "rgb_array":
       self._render_frame()
+
+
+  def _get_neighbors(self, agent_idx):
+    neighbors = list(range(self.num_agents))
+    neighbors.remove(agent_idx)
+    neighbors.sort(key=lambda idx: np.sqrt((self.agents_x[agent_idx]-self.agents_x[idx])**2+(self.agents_y[agent_idx]-self.agents_y[idx])**2))
+
+    return neighbors
 
 
   def _render_frame(self):
@@ -256,11 +260,11 @@ class MarlEnvironment(ParallelEnv):
       )
 
     # Draw the agents
-    for agent in self.agents_list:
+    for i, agent in enumerate(self.agents):
       pygame.draw.circle(
         canvas,
         (0, 0, 255),
-        (agent.x*pix_size, agent.y*pix_size),
+        (self.agents_x[i]*pix_size, self.agents_y[i]*pix_size),
         pix_size*self.metadata["agent_radius"]
       )
       if self.render_vectors:
@@ -268,16 +272,16 @@ class MarlEnvironment(ParallelEnv):
         pygame.draw.line(
           canvas,
           (255, 0, 255),
-          (agent.x*pix_size, agent.y*pix_size),
-          ((agent.x+agent.speed/self.max_speed*np.cos(agent.heading))*pix_size, (agent.y+agent.speed/self.max_speed*np.sin(agent.heading))*pix_size),
+          (self.agents_x[i]*pix_size, self.agents_y[i]*pix_size),
+          ((self.agents_x[i]+self.agents_speed[i]/self.max_speed*np.cos(self.agents_heading[i]))*pix_size, (self.agents_y[i]+self.agents_speed[i]/self.max_speed*np.sin(self.agents_heading[i]))*pix_size),
           width=1,
         )
         # Acceleration vector
         pygame.draw.line(
           canvas,
           (0, 255, 0),
-          (agent.x*pix_size, agent.y*pix_size),
-          ((agent.x+agent.accel/self.max_accel*np.cos(agent.heading+agent.angular_accel))*pix_size, (agent.y+agent.accel/self.max_accel*np.sin(agent.heading+agent.angular_accel))*pix_size),
+          (self.agents_x[i]*pix_size, self.agents_y[i]*pix_size),
+          ((self.agents_x[i]+self.agents_accel[i]/self.max_accel*np.cos(self.agents_heading[i]+self.agents_angular_accel[i]))*pix_size, (self.agents_y[i]+self.agents_accel[i]/self.max_accel*np.sin(self.agents_heading[i]+self.agents_angular_accel[i]))*pix_size),
           width=1
         )
 

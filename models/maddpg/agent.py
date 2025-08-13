@@ -4,7 +4,7 @@ from models.maddpg.utils import Actor, Critic
 class Agent:
   def __init__(self, actor_dims, critic_dims, n_actions, n_agents, agent_idx, chkpt_dir, alpha=0.01, beta=0.01, fc1=64, fc2=64, gamma=0.95, tau=0.01):
     self.gamma = gamma
-    self.ta = tau
+    self.tau = tau
     self.n_actions = n_actions
     self.agent_name = f'agent_{agent_idx}'
     self.actor = Actor(alpha, actor_dims, fc1, fc2, n_actions, chkpt_dir=chkpt_dir, name=self.agent_name+'_actor')

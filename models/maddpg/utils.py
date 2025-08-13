@@ -15,15 +15,15 @@ class Actor(nn.Module):
     self.fc2 = nn.Linear(fc1_dims, fc2_dims)
     self.pi = nn.Linear(fc1_dims, n_actions)
 
-    self.optimizer = optim.Adam(self.parameters, lr=alpha)
+    self.optimizer = optim.Adam(self.parameters(), lr=alpha)
     self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
     self.to(self.device)
 
   def forward(self, state):
-    x = F.relu(self.fc1(state))
-    x = F.relu(self.fc2(x))
-    pi = torch.softmax(self.pi(x), dim=1)
+    x1 = F.relu(self.fc1(state))
+    x2 = F.relu(self.fc2(x1))
+    pi = torch.softmax(self.pi(x2), dim=1)
 
     return pi
   
@@ -50,9 +50,9 @@ class Critic(nn.Module):
     self.to(self.device)
 
   def forward(self, state, action):
-    x = F.relu(self.fc1(torch.cat([state, action], dim=1)))
-    x = F.relu(self.fc2(x))
-    q = self.q(x)
+    x1 = F.relu(self.fc1(torch.cat([state, action], dim=1)))
+    x2 = F.relu(self.fc2(x1))
+    q = self.q(x2)
 
     return q
   

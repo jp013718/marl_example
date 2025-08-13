@@ -63,21 +63,25 @@ class MADDPG:
     mu = torch.cat([acts for acts in all_agents_new_mu_actions], dim=1)
     old_actions = torch.cat([acts for acts in old_agents_actions], dim=1)
 
+    loss = torch.nn.MSELoss()
+
     for agent_idx, agent in enumerate(self.agents):
       critic_value_ = agent.target_critic.forward(states_, new_actions).flatten()
-      critic_value_[dones[:,0]] = 0.0
-      critic_value = agent.critic.forward(states, old_actions).flatten()
+      # critic_value_[dones[:,0]] = 0.0
+      critic_value = agent.critic.forward(states, old_actions).flatten().to(torch.double)
 
       target = rewards[:,agent_idx] + agent.gamma*critic_value_
-      critic_loss = functional.mse_loss(target, critic_value)
+      critic_loss = loss(target, critic_value)
       agent.critic.optimizer.zero_grad()
       critic_loss.backward(retain_graph=True)
-      agent.critic.optimizer.step()
 
       actor_loss = agent.critic.forward(states, mu).flatten()
       actor_loss = -torch.mean(actor_loss)
       agent.actor.optimizer.zero_grad()
       actor_loss.backward(retain_graph=True)
-      agent.actor.optimizer.step()
 
+    
+    for agent in self.agents:
+      agent.critic.optimizer.step()
+      agent.actor.optimizer.step()
       agent.update_network_parameters()

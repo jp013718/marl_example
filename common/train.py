@@ -61,7 +61,7 @@ if __name__ == "__main__":
   total_steps = 0
   score_history = []
   evaluate = False
-  best_score = 0
+  best_score = -np.inf
 
   if evaluate:
     maddpg_agents.load_checkpoint()

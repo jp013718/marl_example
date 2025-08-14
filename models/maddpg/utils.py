@@ -4,11 +4,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 import numpy as np
+from pathlib import Path
 
 class Actor(nn.Module):
   def __init__(self, alpha, input_dims, fc1_dims, fc2_dims, n_actions, name, chkpt_dir):
     super(Actor, self).__init__()
 
+    Path(chkpt_dir).mkdir(parents=True, exist_ok=True)
     self.chkpt_file = os.path.join(chkpt_dir, name)
 
     self.fc1 = nn.Linear(input_dims, fc1_dims)
@@ -38,6 +40,7 @@ class Critic(nn.Module):
   def __init__(self, beta, input_dims, fc1_dims, fc2_dims, n_agents, n_actions, name, chkpt_dir):
     super(Critic, self).__init__()
 
+    Path(chkpt_dir).mkdir(parents=True, exist_ok=True)
     self.chkpt_file = os.path.join(chkpt_dir, name)
 
     self.fc1 = nn.Linear(input_dims+n_agents*n_actions, fc1_dims)

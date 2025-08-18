@@ -18,7 +18,7 @@ class Agent:
     state = torch.tensor([observation], dtype=torch.float).to(self.actor.device)
     actions = self.actor.forward(state)
     noise = torch.rand(self.n_actions).to(self.actor.device)
-    action = actions+noise
+    action = actions
     
     return action.detach().cpu().numpy()[0]
   
@@ -46,14 +46,14 @@ class Agent:
 
     self.target_critic.load_state_dict(critic_state_dict)
 
-  def save_models(self):
-    self.actor.save_checkpoint()
-    self.target_actor.save_checkpoint()
-    self.critic.save_checkpoint()
-    self.target_critic.save_checkpoint()
+  def save_models(self, dir=''):
+    self.actor.save_checkpoint(dir)
+    self.target_actor.save_checkpoint(dir)
+    self.critic.save_checkpoint(dir)
+    self.target_critic.save_checkpoint(dir)
 
-  def load_models(self):
-    self.actor.load_checkpoint()
-    self.target_actor.load_checkpoint()
-    self.critic.load_checkpoint()
-    self.target_critic.load_checkpoint()
+  def load_models(self, dir=''):
+    self.actor.load_checkpoint(dir)
+    self.target_actor.load_checkpoint(dir)
+    self.critic.load_checkpoint(dir)
+    self.target_critic.load_checkpoint(dir)

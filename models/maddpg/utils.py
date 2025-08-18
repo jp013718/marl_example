@@ -11,7 +11,8 @@ class Actor(nn.Module):
     super(Actor, self).__init__()
 
     Path(chkpt_dir).mkdir(parents=True, exist_ok=True)
-    self.chkpt_file = os.path.join(chkpt_dir, name)
+    self.chkpt_dir = chkpt_dir
+    self.chkpt_file = name
 
     self.fc1 = nn.Linear(input_dims, fc1_dims)
     self.fc2 = nn.Linear(fc1_dims, fc2_dims)
@@ -29,11 +30,11 @@ class Actor(nn.Module):
 
     return pi
   
-  def save_checkpoint(self):
-    torch.save(self.state_dict(), self.chkpt_file)
+  def save_checkpoint(self, dir=''):
+    torch.save(self.state_dict(), os.path.join(self.chkpt_dir, dir, self.chkpt_file))
 
-  def load_checkpoint(self):
-    self.load_state_dict(torch.load(self.chkpt_file))
+  def load_checkpoint(self, dir=''):
+    self.load_state_dict(torch.load(os.path.join(self.chkpt_dir, dir, self.chkpt_file)))
 
 
 class Critic(nn.Module):
@@ -41,7 +42,8 @@ class Critic(nn.Module):
     super(Critic, self).__init__()
 
     Path(chkpt_dir).mkdir(parents=True, exist_ok=True)
-    self.chkpt_file = os.path.join(chkpt_dir, name)
+    self.chkpt_dir = chkpt_dir
+    self.chkpt_file = name
 
     self.fc1 = nn.Linear(input_dims+n_agents*n_actions, fc1_dims)
     self.fc2 = nn.Linear(fc1_dims, fc2_dims)
@@ -59,11 +61,11 @@ class Critic(nn.Module):
 
     return q
   
-  def save_checkpoint(self):
-    torch.save(self.state_dict(), self.chkpt_file)
+  def save_checkpoint(self, dir=''):
+    torch.save(self.state_dict(), os.path.join(self.chkpt_dir, dir, self.chkpt_file))
 
-  def load_checkpoint(self):
-    self.load_state_dict(torch.load(self.chkpt_file))
+  def load_checkpoint(self, dir=''):
+    self.load_state_dict(torch.load(os.path.joint(self.chkpt_dir, dir, self.chkpt_file)))
 
 
 class ReplayBuffer:

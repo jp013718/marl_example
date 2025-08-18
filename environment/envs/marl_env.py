@@ -190,9 +190,10 @@ class MarlEnvironment(ParallelEnv):
 
 
   def _get_rewards(self, observations, actions):
-    r_neighbor_prox = -10
-    r_target_prox = 50
-    r_target_reached = 1000
+    r_neighbor_prox = -1
+    r_neighbor_collision = -1000
+    r_target_prox = 5
+    r_target_reached = 1.5*r_target_prox*(self.max_timesteps-self.timestep)
     
     rewards = {agent: 0 for agent in self.agents}
 
@@ -201,6 +202,7 @@ class MarlEnvironment(ParallelEnv):
       
       for j in neighbors:
         rewards[self.agents[i]] += r_neighbor_prox/np.sqrt((self.agents_x[i]-self.agents_x[j])**2+(self.agents_y[i]-self.agents_y[j])**2)
+        rewards[self.agents[i]] += r_neighbor_collision if np.sqrt((self.agents_x[i]-self.agents_x[j])**2+(self.agents_y[i]-self.agents_y[j])**2) < 2*self.metadata["agent_radius"] else 0
       
       rewards[self.agents[i]] += r_target_prox/np.sqrt((self.agents_x[i]-target_pos[0])**2+(self.agents_y[i]-target_pos[1])**2)*(np.atan2(self.agents_y[i]-target_pos[1], self.agents_x[i]-target_pos[0])-self.agents_heading[i])
       rewards[self.agents[i]] += r_target_reached if np.sqrt((self.agents_x[i]-target_pos[0])**2+(self.agents_y[i]-target_pos[1])**2) < self.metadata["target_radius"] else 0

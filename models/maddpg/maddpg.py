@@ -12,16 +12,16 @@ class MADDPG:
     self.agents = [Agent(actor_dims[agent_idx], critic_dims, n_actions, n_agents, agent_idx, alpha=alpha, beta=beta, chkpt_dir=chkpt_dir) for agent_idx in range(self.n_agents)]
 
   
-  def save_checkpoint(self):
+  def save_checkpoint(self, dir=''):
     print('...saving checkpoint...')
     for agent in self.agents:
-      agent.save_models()
+      agent.save_models(dir)
 
   
-  def load_checkpoint(self):
+  def load_checkpoint(self, dir=''):
     print('...loading checkpoint...')
     for agent in self.agents:
-      agent.load_models()
+      agent.load_models(dir)
 
   
   def choose_action(self, raw_obs):

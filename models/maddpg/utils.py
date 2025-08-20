@@ -93,8 +93,8 @@ class ReplayBuffer:
     self.actor_action_memory = []
 
     for i in range(self.n_agents):
-      self.actor_state_memory.append(np.zeros((self.mem_size, self.actor_dims[i])))
-      self.actor_new_state_memory.append(np.zeros((self.mem_size, self.actor_dims[i])))
+      self.actor_state_memory.append(np.zeros((self.mem_size, self.actor_dims)))
+      self.actor_new_state_memory.append(np.zeros((self.mem_size, self.actor_dims)))
       self.actor_action_memory.append(np.zeros((self.mem_size, self.n_actions)))
 
   def store_transition(self, raw_obs, state, action, reward, raw_obs_, state_, done):

@@ -26,7 +26,7 @@ def flatten_dict(d: dict, prev_key=''):
   return new_dict
 
 
-def unpack_obs_dict(obs: dict):
+def unpack_dict(obs: dict):
   obs_list = []
   for val in obs.values():
     indv_obs_dict = flatten_dict(val)
@@ -44,39 +44,42 @@ def action_list_to_action_dict(actions):
 
 if __name__ == "__main__":
   scenario = "simple"
-  env = MarlEnvironment(render_mode=None)
-  n_agents = env.num_agents
+  n_agents = [3]
+  agent_types = {0: "agent"}
+  env = MarlEnvironment(n_agents=n_agents[0], render_mode=None)
   actor_dims = []
-  for i in range(n_agents):
-    actor_dims.append(np.array(list(flatten_dict(env.observation_space("agent")).values())).shape[0])
-  critic_dims = sum(actor_dims)
+  n_actions = []
+  for agent_type in agent_types.values():
+    actor_dims.append(np.array(list(flatten_dict(env.observation_space(agent_type)).values())).shape[0])
+    n_actions.append(env.action_space(agent_type).shape[0])
+  critic_dims = len(list(flatten_dict(env._get_infos())))
 
-  n_actions = env.action_space('agent').shape[0]
-  maddpg_agents = MADDPG(actor_dims, critic_dims, n_agents, n_actions, fc1=64, fc2=64, alpha=0.01, beta=0.01, scenario=scenario, chkpt_dir='tmp/maddpg/')
+  maddpg_agents = MADDPG(actor_dims, critic_dims, 1, n_agents, n_actions, fc1=64, fc2=64, alpha=0.01, beta=0.01, scenario=scenario, chkpt_dir='tmp/maddpg/')
 
-  memory = ReplayBuffer(1000000, critic_dims, actor_dims, n_actions, n_agents, batch_size=1024)
+  memories = [ReplayBuffer(1000000, critic_dims, actor_dims[agent_type], n_actions[agent_type], n_agents[agent_type], batch_size=1024) for agent_type in agent_types.keys()]
 
   PRINT_INTERVAL = 10
   N_GAMES = 50000
   total_steps = 0
   score_history = []
-  evaluate = True
+  evaluate = False
   eval_model = "best"
   save_freq = 500
   best_score = -np.inf
 
   if evaluate:
-    maddpg_agents.load_checkpoint("recent")
+    maddpg_agents.load_checkpoint(eval_model)
     env.render_mode = "human"
 
   for i in range(N_GAMES):
     obs, infos = env.reset()
-    obs = unpack_obs_dict(obs)
+    obs = unpack_dict(obs)
+    infos = flatten_dict(infos)
     score = 0
     terminated = {agent: False for agent in env.agents}
     truncated = {agent: False for agent in env.agents}
     episode_step = 0
-    done = [False]*n_agents
+    done = [False]*sum(n_agents)
 
     while not all(done):
       if evaluate:
@@ -84,20 +87,25 @@ if __name__ == "__main__":
 
       actions = maddpg_agents.choose_action(obs)
       actions_dict = action_list_to_action_dict(actions)
-      obs_, rewards, terminated, truncated, infos = env.step(actions_dict)
-      obs_ = unpack_obs_dict(obs_)
-      state = obs_list_to_state_vector(obs)
-      state_ = obs_list_to_state_vector(obs_)
+      obs_, rewards, terminated, truncated, infos_ = env.step(actions_dict)
+      obs_ = unpack_dict(obs_)
+      infos_ = flatten_dict(infos_)
+      state = np.array(list(infos.values()))
+      state_ = np.array(list(infos_.values()))
+      # state = obs_list_to_state_vector(obs)
+      # state_ = obs_list_to_state_vector(obs_)
 
       done = terminated.values() if not all(truncated.values()) else truncated.values()
       rewards_list = np.array(list(rewards.values()))
 
-      memory.store_transition(obs, state, actions, rewards_list, obs_, state_, done)
+      for agent_type, n_agent_type in enumerate(n_agents):
+        memories[agent_type].store_transition(obs[sum(n_agents[0:agent_type]):sum(n_agents[0:agent_type])+n_agent_type+1], state, actions, rewards_list, obs_, state_, done)
 
-      if total_steps % 100 == 0 and not evaluate:
-        maddpg_agents.learn(memory)
+        if total_steps % 100 == 0 and not evaluate:
+          maddpg_agents.learn(agent_type, memories[agent_type])
 
       obs = obs_
+      infos = infos_
 
       score += sum(rewards_list)
       total_steps += 1
@@ -109,7 +117,7 @@ if __name__ == "__main__":
       if avg_score > best_score and len(score_history) >= 100:
         maddpg_agents.save_checkpoint("best")
         best_score = avg_score
-      if i % save_freq == 0 and len(score_history) > 0: 
+      if i % save_freq == 0 and len(score_history) > 1: 
         maddpg_agents.save_checkpoint("recent")
     if i % PRINT_INTERVAL == 0 and i > 0:
       print(f'episode: {i}; avg_score: {avg_score:.1f}')

@@ -6,7 +6,7 @@ class Agent:
     self.gamma = gamma
     self.tau = tau
     self.n_actions = n_actions
-    self.agent_name = f'agent_{agent_idx}'
+    self.agent_name = f'agent_type_{agent_idx}'
     self.actor = Actor(alpha, actor_dims, fc1, fc2, n_actions, chkpt_dir=chkpt_dir, name=self.agent_name+'_actor')
     self.critic = Critic(beta, critic_dims, fc1, fc2, n_agents, n_actions, chkpt_dir=chkpt_dir, name=self.agent_name+'_critic')
     self.target_actor = Actor(alpha, actor_dims, fc1, fc2, n_actions, chkpt_dir=chkpt_dir, name=self.agent_name+'_target_actor')
@@ -18,7 +18,7 @@ class Agent:
     state = torch.tensor([observation], dtype=torch.float).to(self.actor.device)
     actions = self.actor.forward(state)
     noise = torch.rand(self.n_actions).to(self.actor.device)
-    action = actions
+    action = actions+noise
     
     return action.detach().cpu().numpy()[0]
   

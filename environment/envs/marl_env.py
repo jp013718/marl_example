@@ -74,9 +74,9 @@ class MarlEnvironment(ParallelEnv):
     self.observation_spaces = {
       "agent": spaces.Dict(
         {
-          "x": spaces.Box(low=0, high=self.mapsize, shape=(1,), dtype=np.float64),
-          "y": spaces.Box(low=0, high=self.mapsize, shape=(1,), dtype=np.float64),
-          "heading": spaces.Box(low=0, high=2*np.pi, shape=(1,), dtype=np.float64),
+          # "x": spaces.Box(low=0, high=self.mapsize, shape=(1,), dtype=np.float64),
+          # "y": spaces.Box(low=0, high=self.mapsize, shape=(1,), dtype=np.float64),
+          # "heading": spaces.Box(low=0, high=2*np.pi, shape=(1,), dtype=np.float64),
           "speed": spaces.Box(low=0, high=self.max_speed, shape=(1,), dtype=np.float64),
           "target_heading": spaces.Box(low=0, high=2*np.pi, shape=(1,), dtype=np.float64),
           "target_dist": spaces.Box(low=0, high=self.mapsize, shape=(1,), dtype=np.float64), 
@@ -169,9 +169,9 @@ class MarlEnvironment(ParallelEnv):
 
       observations[self.agents[i]].update(
         {
-          "x": self.agents_x[i],
-          "y": self.agents_y[i],
-          "heading": self.agents_heading[i],
+          # "x": self.agents_x[i],
+          # "y": self.agents_y[i],
+          # "heading": self.agents_heading[i],
           "speed": self.agents_speed[i],
           "target_heading": np.atan2(self.agents_y[i]-target_pos[1], self.agents_x[i]-target_pos[0]) - self.agents_heading[i],
           "target_dist": np.sqrt((self.agents_x[i]-target_pos[0])**2+(self.agents_y[i]-target_pos[1])**2),
@@ -179,7 +179,7 @@ class MarlEnvironment(ParallelEnv):
             f"agent_{j}": {
               "direction_to_agent": np.atan2(self.agents_y[i]-self.agents_y[neighbors[j]], self.agents_x[i]-self.agents_x[neighbors[j]]) - self.agents_heading[i],
               "agent_dist": np.sqrt((self.agents_x[i]-self.agents_x[neighbors[j]])**2+(self.agents_y[i]-self.agents_y[neighbors[j]])**2),
-              "agent_heading": self.agents_heading[neighbors[j]],
+              "agent_heading": self.agents_heading[neighbors[j]]-self.agents_heading[i],
               "agent_speed": self.agents_speed[neighbors[j]],
             } for j in range(self.num_near_agents)
           }
@@ -224,7 +224,16 @@ class MarlEnvironment(ParallelEnv):
   
 
   def _get_infos(self):
-    return {agent: {} for agent in self.agents}
+    return {
+      agent: {
+        "x": self.agents_x[i],
+        "y": self.agents_y[i],
+        "heading": self.agents_heading[i],
+        "speed": self.agents_speed[i],
+        "target_x": self.targets_x[i],
+        "target_y": self.targets_y[i],
+      } for i, agent in enumerate(self.agents)
+    }
 
 
   def render(self):

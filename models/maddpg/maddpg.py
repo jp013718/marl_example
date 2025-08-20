@@ -5,11 +5,27 @@ from models.maddpg.utils import ReplayBuffer
 
 
 class MADDPG:
-  def __init__(self, actor_dims, critic_dims, n_agents, n_actions, scenario='simple', alpha=0.01, beta=0.01, fc1=64, fc2=64, gamma=0.99, tau=0.01, chkpt_dir='/tmp/maddpg/'):
+  def __init__(self, actor_dims: list[int], critic_dims: int, n_agent_types: int, n_agents: list[int], n_actions: list[int], scenario='simple', alpha=0.01, beta=0.01, fc1=64, fc2=64, gamma=0.99, tau=0.01, chkpt_dir='/tmp/maddpg/'):
+    self.n_agent_types = n_agent_types
     self.n_agents = n_agents
     self.n_actions = n_actions
     chkpt_dir += scenario
-    self.agents = [Agent(actor_dims[agent_idx], critic_dims, n_actions, n_agents, agent_idx, alpha=alpha, beta=beta, chkpt_dir=chkpt_dir) for agent_idx in range(self.n_agents)]
+    self.agents = [
+      Agent(
+        actor_dims[agent_type], 
+        critic_dims, 
+        n_actions[agent_type], 
+        n_agents[agent_type], 
+        agent_type, 
+        alpha=alpha, 
+        beta=beta, 
+        fc1=fc1, 
+        fc2=fc2, 
+        gamma=gamma, 
+        tau=tau, 
+        chkpt_dir=chkpt_dir
+      ) for agent_type in range(self.n_agent_types)
+    ]
 
   
   def save_checkpoint(self, dir=''):
@@ -26,19 +42,26 @@ class MADDPG:
   
   def choose_action(self, raw_obs):
     actions = []
-    for agent_idx, agent in enumerate(self.agents):
-      action = agent.choose_action(raw_obs[agent_idx])
-      actions.append(action)
+    agent_idx = 0
+    for agent_type, num_agents in enumerate(self.n_agents):
+      for _ in range(num_agents):
+        action = self.agents[agent_type].choose_action(raw_obs[agent_idx])
+        agent_idx += 1
+        actions.append(action)
+
+    # for agent_idx, agent in enumerate(self.agents):
+    #   action = agent.choose_action(raw_obs[agent_idx])
+    #   actions.append(action)
     return actions
   
 
-  def learn(self, memory: ReplayBuffer):
+  def learn(self, agent_type: int, memory: ReplayBuffer):
     if not memory.ready():
       return
     
     actor_states, states, actions, rewards, actor_new_states, states_, dones = memory.sample_buffer()
 
-    device = self.agents[0].actor.device
+    device = self.agents[agent_type].actor.device
 
     states = torch.tensor(states, dtype=torch.float).to(device)
     actions = torch.tensor(actions, dtype=torch.float).to(device)
@@ -50,14 +73,14 @@ class MADDPG:
     all_agents_new_mu_actions = []
     old_agents_actions = []
 
-    for agent_idx, agent in enumerate(self.agents):
-      new_states = torch.tensor(actor_new_states[agent_idx], dtype=torch.float).to(device)
-      new_pi = agent.target_actor.forward(new_states)
+    for agent_sub_idx in range(self.n_agents[agent_type]):
+      new_states = torch.tensor(actor_new_states[agent_sub_idx], dtype=torch.float).to(device)
+      new_pi = self.agents[agent_type].target_actor.forward(new_states)
       all_agents_new_actions.append(new_pi)
-      mu_states = torch.tensor(actor_states[agent_idx], dtype=torch.float).to(device)
-      pi = agent.actor.forward(mu_states)
+      mu_states = torch.tensor(actor_states[agent_sub_idx], dtype=torch.float).to(device)
+      pi = self.agents[agent_type].actor.forward(mu_states)
       all_agents_new_mu_actions.append(pi)
-      old_agents_actions.append(actions[agent_idx])
+      old_agents_actions.append(actions[agent_sub_idx])
 
     new_actions = torch.cat([acts for acts in all_agents_new_actions], dim=1)
     mu = torch.cat([acts for acts in all_agents_new_mu_actions], dim=1)
@@ -65,23 +88,24 @@ class MADDPG:
 
     loss = torch.nn.MSELoss()
 
-    for agent_idx, agent in enumerate(self.agents):
-      critic_value_ = agent.target_critic.forward(states_, new_actions).flatten()
+    self.agents[agent_type].critic.optimizer.zero_grad()
+    self.agents[agent_type].actor.optimizer.zero_grad()
+    for agent_sub_idx in range(self.n_agents[agent_type]):
+      critic_value_ = self.agents[agent_type].target_critic.forward(states_, new_actions).flatten()
       # critic_value_[dones[:,0]] = 0.0
-      critic_value = agent.critic.forward(states, old_actions).flatten().to(torch.double)
+      critic_value = self.agents[agent_type].critic.forward(states, old_actions).flatten().to(torch.double)
 
-      target = rewards[:,agent_idx] + agent.gamma*critic_value_
+      target = rewards[:,agent_sub_idx] + self.agents[agent_type].gamma*critic_value_
       critic_loss = loss(target, critic_value)
-      agent.critic.optimizer.zero_grad()
+      # self.agents[agent_type].critic.optimizer.zero_grad()
       critic_loss.backward(retain_graph=True)
 
-      actor_loss = agent.critic.forward(states, mu).flatten()
+      actor_loss = self.agents[agent_type].critic.forward(states, mu).flatten()
       actor_loss = -torch.mean(actor_loss)
-      agent.actor.optimizer.zero_grad()
+      # agent.actor.optimizer.zero_grad()
       actor_loss.backward(retain_graph=True)
 
     
-    for agent in self.agents:
-      agent.critic.optimizer.step()
-      agent.actor.optimizer.step()
-      agent.update_network_parameters()
+    self.agents[agent_type].critic.optimizer.step()
+    self.agents[agent_type].actor.optimizer.step()
+    self.agents[agent_type].update_network_parameters()

@@ -10,7 +10,7 @@ class Actor(nn.Module):
   def __init__(self, alpha, input_dims, fc1_dims, fc2_dims, n_actions, name, chkpt_dir):
     super(Actor, self).__init__()
 
-    Path(chkpt_dir).mkdir(parents=True, exist_ok=True)
+    
     self.chkpt_dir = chkpt_dir
     self.chkpt_file = name
 
@@ -19,7 +19,8 @@ class Actor(nn.Module):
     self.pi = nn.Linear(fc1_dims, n_actions)
 
     self.optimizer = optim.Adam(self.parameters(), lr=alpha)
-    self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    # self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    self.device = 'cpu'
 
     self.to(self.device)
 
@@ -31,6 +32,7 @@ class Actor(nn.Module):
     return pi
   
   def save_checkpoint(self, dir=''):
+    Path(os.path.join(self.chkpt_dir, dir)).mkdir(parents=True, exist_ok=True)
     torch.save(self.state_dict(), os.path.join(self.chkpt_dir, dir, self.chkpt_file))
 
   def load_checkpoint(self, dir=''):
@@ -41,7 +43,6 @@ class Critic(nn.Module):
   def __init__(self, beta, input_dims, fc1_dims, fc2_dims, n_agents, n_actions, name, chkpt_dir):
     super(Critic, self).__init__()
 
-    Path(chkpt_dir).mkdir(parents=True, exist_ok=True)
     self.chkpt_dir = chkpt_dir
     self.chkpt_file = name
 
@@ -50,7 +51,8 @@ class Critic(nn.Module):
     self.q = nn.Linear(fc2_dims, 1)
 
     self.optimizer = optim.Adam(self.parameters(), lr=beta)
-    self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    # self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    self.device = 'cpu'
 
     self.to(self.device)
 
@@ -62,10 +64,11 @@ class Critic(nn.Module):
     return q
   
   def save_checkpoint(self, dir=''):
+    Path(os.path.join(self.chkpt_dir, dir)).mkdir(parents=True, exist_ok=True)
     torch.save(self.state_dict(), os.path.join(self.chkpt_dir, dir, self.chkpt_file))
 
   def load_checkpoint(self, dir=''):
-    self.load_state_dict(torch.load(os.path.joint(self.chkpt_dir, dir, self.chkpt_file)))
+    self.load_state_dict(torch.load(os.path.join(self.chkpt_dir, dir, self.chkpt_file)))
 
 
 class ReplayBuffer:

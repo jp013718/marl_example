@@ -60,12 +60,13 @@ if __name__ == "__main__":
   N_GAMES = 50000
   total_steps = 0
   score_history = []
-  evaluate = False
+  evaluate = True
+  eval_model = "best"
   save_freq = 500
   best_score = -np.inf
 
   if evaluate:
-    maddpg_agents.load_checkpoint()
+    maddpg_agents.load_checkpoint("recent")
     env.render_mode = "human"
 
   for i in range(N_GAMES):
@@ -105,10 +106,10 @@ if __name__ == "__main__":
     score_history.append(score)
     avg_score = np.mean(score_history[-100:])
     if not evaluate:
-      if avg_score > best_score and len(score) >= 100:
+      if avg_score > best_score and len(score_history) >= 100:
         maddpg_agents.save_checkpoint("best")
         best_score = avg_score
-      if i % save_freq == 0 and len(score) > 0: 
+      if i % save_freq == 0 and len(score_history) > 0: 
         maddpg_agents.save_checkpoint("recent")
     if i % PRINT_INTERVAL == 0 and i > 0:
       print(f'episode: {i}; avg_score: {avg_score:.1f}')

@@ -62,7 +62,7 @@ if __name__ == "__main__":
   N_GAMES = 50000
   total_steps = 0
   score_history = []
-  evaluate = False
+  evaluate = True
   eval_model = "best"
   save_freq = 500
   best_score = -np.inf

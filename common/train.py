@@ -59,7 +59,7 @@ if __name__ == "__main__":
   memories = [ReplayBuffer(1000000, critic_dims, actor_dims[agent_type], n_actions[agent_type], n_agents[agent_type], batch_size=1024) for agent_type in agent_types.keys()]
 
   PRINT_INTERVAL = 10
-  N_GAMES = 50000
+  N_GAMES = 50001
   total_steps = 0
   score_history = []
   evaluate = True
@@ -86,7 +86,15 @@ if __name__ == "__main__":
         env.render()
 
       actions = maddpg_agents.choose_action(obs)
-      actions_dict = action_list_to_action_dict(actions)
+      actions_list = []
+      for agent_idx, term in enumerate(terminated.values()):
+        if term:
+          actions_list.append(np.array([0, 0]))
+          actions[agent_idx] = np.array([0, 0])
+        else:
+          actions_list.append(actions[agent_idx]*np.array([env.max_angular_accel, env.max_accel]))
+
+      actions_dict = action_list_to_action_dict(actions_list)
       obs_, rewards, terminated, truncated, infos_ = env.step(actions_dict)
       obs_ = unpack_dict(obs_)
       infos_ = flatten_dict(infos_)
@@ -99,7 +107,17 @@ if __name__ == "__main__":
       rewards_list = np.array(list(rewards.values()))
 
       for agent_type, n_agent_type in enumerate(n_agents):
-        memories[agent_type].store_transition(obs[sum(n_agents[0:agent_type]):sum(n_agents[0:agent_type])+n_agent_type+1], state, actions, rewards_list, obs_, state_, done)
+        slice_start = sum(n_agents[0:agent_type])
+        slice_end = sum(n_agents[0:agent_type])+n_agent_type+1
+        memories[agent_type].store_transition(
+          obs[slice_start:slice_end], 
+          state, 
+          actions[slice_start:slice_end], 
+          rewards_list[slice_start:slice_end], 
+          obs_[slice_start:slice_end], 
+          state_, 
+          done
+        )
 
         if total_steps % 100 == 0 and not evaluate:
           maddpg_agents.learn(agent_type, memories[agent_type])

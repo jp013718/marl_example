@@ -10,7 +10,6 @@ class Actor(nn.Module):
   def __init__(self, alpha, input_dims, fc1_dims, fc2_dims, n_actions, name, chkpt_dir):
     super(Actor, self).__init__()
 
-    
     self.chkpt_dir = chkpt_dir
     self.chkpt_file = name
 
@@ -27,7 +26,7 @@ class Actor(nn.Module):
   def forward(self, state):
     x1 = F.relu(self.fc1(state))
     x2 = F.relu(self.fc2(x1))
-    pi = torch.softmax(self.pi(x2), dim=1)
+    pi = torch.tanh(self.pi(x2))
 
     return pi
   

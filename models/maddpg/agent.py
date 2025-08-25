@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 from models.maddpg.utils import Actor, Critic
 
 class Agent:
@@ -17,8 +18,9 @@ class Agent:
   def choose_action(self, observation):
     state = torch.tensor([observation], dtype=torch.float).to(self.actor.device)
     actions = self.actor.forward(state)
-    noise = torch.rand(self.n_actions).to(self.actor.device)
+    noise = 0.5*(torch.rand_like(actions)-torch.tensor([0.5, 0.5]))
     action = actions+noise
+    action.clamp(min=-1, max=1)
     
     return action.detach().cpu().numpy()[0]
   

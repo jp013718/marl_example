@@ -201,10 +201,10 @@ class MarlEnvironment(ParallelEnv):
       neighbors = self._get_neighbors(i)
       
       for j in neighbors:
-        rewards[self.agents[i]] += r_neighbor_prox/np.sqrt((self.agents_x[i]-self.agents_x[j])**2+(self.agents_y[i]-self.agents_y[j])**2)
+        rewards[self.agents[i]] += r_neighbor_prox/np.sqrt((self.agents_x[i]-self.agents_x[j])**2+(self.agents_y[i]-self.agents_y[j])**2) if np.sqrt((self.agents_x[i]-self.agents_x[j])**2+(self.agents_y[i]-self.agents_y[j])**2) > 0 else 2*r_neighbor_collision
         rewards[self.agents[i]] += r_neighbor_collision if np.sqrt((self.agents_x[i]-self.agents_x[j])**2+(self.agents_y[i]-self.agents_y[j])**2) < 2*self.metadata["agent_radius"] else 0
       
-      rewards[self.agents[i]] += r_target_prox/np.sqrt((self.agents_x[i]-target_pos[0])**2+(self.agents_y[i]-target_pos[1])**2)*(np.atan2(self.agents_y[i]-target_pos[1], self.agents_x[i]-target_pos[0])-self.agents_heading[i])
+      rewards[self.agents[i]] += r_target_prox/np.sqrt((self.agents_x[i]-target_pos[0])**2+(self.agents_y[i]-target_pos[1])**2)*(np.atan2(self.agents_y[i]-target_pos[1], self.agents_x[i]-target_pos[0])-self.agents_heading[i]) if np.sqrt((self.agents_x[i]-target_pos[0])**2+(self.agents_y[i]-target_pos[1])**2) > 0 else 2*r_target_reached
       rewards[self.agents[i]] += r_target_reached if np.sqrt((self.agents_x[i]-target_pos[0])**2+(self.agents_y[i]-target_pos[1])**2) < self.metadata["target_radius"] else 0
 
     return rewards

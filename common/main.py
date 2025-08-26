@@ -73,7 +73,7 @@ if __name__ == "__main__":
 
   maddpg_agents = MADDPG(actor_dims, critic_dims, 1, n_agents, n_actions, fc1=64, fc2=64, alpha=0.01, beta=0.01, scenario=scenario, chkpt_dir='tmp/maddpg/')
 
-  memories = [ReplayBuffer(1000000, critic_dims, actor_dims[agent_type], n_actions[agent_type], n_agents[agent_type], batch_size=1024) for agent_type in agent_types.keys()]
+  memories = [ReplayBuffer(1000000, critic_dims, actor_dims[agent_type], n_actions[agent_type], n_agents[agent_type], batch_size=1024*n_agents[i]) for i, agent_type in enumerate(agent_types.keys())]
 
   PRINT_INTERVAL = 10
   N_GAMES = args.duration

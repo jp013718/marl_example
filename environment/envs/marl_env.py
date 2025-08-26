@@ -214,7 +214,10 @@ class MarlEnvironment(ParallelEnv):
     for i, agent in enumerate(self.agents):
       if not self.terms[agent]:
         neighbors = self._get_neighbors(i)
-        self.terms[agent] = np.sqrt((self.agents_x[i]-self.agents_x[neighbors[0]])**2+(self.agents_y[i]-self.agents_y[neighbors[0]])**2) <= 2*self.metadata["agent_radius"] or np.sqrt((self.agents_x[i]-self.targets_x[i])**2+(self.agents_y[i]-self.targets_y[i])**2) < self.metadata["target_radius"]
+        if len(neighbors) > 0:
+          self.terms[agent] = np.sqrt((self.agents_x[i]-self.agents_x[neighbors[0]])**2+(self.agents_y[i]-self.agents_y[neighbors[0]])**2) <= 2*self.metadata["agent_radius"]
+          
+        self.terms[agent] = self.terms[agent] or np.sqrt((self.agents_x[i]-self.targets_x[i])**2+(self.agents_y[i]-self.targets_y[i])**2) < self.metadata["target_radius"]
 
     return self.terms
 

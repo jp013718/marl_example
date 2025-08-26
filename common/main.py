@@ -47,10 +47,10 @@ if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument('-t', '--train', action='store_true')
   parser.add_argument('-c', '--checkpoint', default=None)
-  parser.add_argument('-r', '--random_episodes', default=1000)
-  parser.add_argument('-d', '--duration', default=50001)
-  parser.add_argument('-n', '--num_agents', default=3)
-  parser.add_argument('-k', '--k_near_agents', default=2)
+  parser.add_argument('-r', '--random_episodes', default=1000, type=int)
+  parser.add_argument('-d', '--duration', default=50001, type=int)
+  parser.add_argument('-n', '--num_agents', default=3, type=int)
+  parser.add_argument('-k', '--k_near_agents', default=2, type=int)
 
   args = parser.parse_args()
   
@@ -61,7 +61,7 @@ if __name__ == "__main__":
       raise e("No checkpoint specified for evaluation. Use the flag -c [checkpoint] or --checkpoint [checkpoint]")
 
   scenario = "simple"
-  n_agents = [args.num_agents]
+  n_agents = [int(args.num_agents)]
   agent_types = {0: "agent"}
   env = MarlEnvironment(n_agents=n_agents[0], num_near_agents=args.k_near_agents,render_mode=None)
   actor_dims = []

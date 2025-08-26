@@ -1,5 +1,6 @@
 import numpy as np
 import sys
+import argparse
 import gymnasium.spaces as spaces
 sys.path.append("..")
 from models.maddpg.maddpg import MADDPG
@@ -43,10 +44,26 @@ def action_list_to_action_dict(actions):
 
 
 if __name__ == "__main__":
+  parser = argparse.ArgumentParser()
+  parser.add_argument('-t', '--train', action='store_true')
+  parser.add_argument('-c', '--checkpoint', default=None)
+  parser.add_argument('-r', '--random_episodes', default=1000)
+  parser.add_argument('-d', '--duration', default=50001)
+  parser.add_argument('-n', '--num_agents', default=3)
+  parser.add_argument('-k', '--k_near_agents', default=2)
+
+  args = parser.parse_args()
+  
+  if not args.train:
+    try:
+      assert args.checkpoint
+    except AssertionError as e:
+      raise e("No checkpoint specified for evaluation. Use the flag -c [checkpoint] or --checkpoint [checkpoint]")
+
   scenario = "simple"
-  n_agents = [3]
+  n_agents = [args.num_agents]
   agent_types = {0: "agent"}
-  env = MarlEnvironment(n_agents=n_agents[0], render_mode=None)
+  env = MarlEnvironment(n_agents=n_agents[0], num_near_agents=args.k_near_agents,render_mode=None)
   actor_dims = []
   n_actions = []
   for agent_type in agent_types.values():
@@ -59,11 +76,12 @@ if __name__ == "__main__":
   memories = [ReplayBuffer(1000000, critic_dims, actor_dims[agent_type], n_actions[agent_type], n_agents[agent_type], batch_size=1024) for agent_type in agent_types.keys()]
 
   PRINT_INTERVAL = 10
-  N_GAMES = 50001
+  N_GAMES = args.duration
+  N_EXPLORATION_GAMES = args.random_episodes
   total_steps = 0
   score_history = []
-  evaluate = True
-  eval_model = "best"
+  evaluate = not args.train
+  eval_model = args.checkpoint
   save_freq = 500
   best_score = -np.inf
 
@@ -85,16 +103,22 @@ if __name__ == "__main__":
       if evaluate:
         env.render()
 
-      actions = maddpg_agents.choose_action(obs)
-      actions_list = []
-      for agent_idx, term in enumerate(terminated.values()):
-        if term:
-          actions_list.append(np.array([0, 0]))
-          actions[agent_idx] = np.array([0, 0])
-        else:
-          actions_list.append(actions[agent_idx]*np.array([env.max_angular_accel, env.max_accel]))
+      if i < N_EXPLORATION_GAMES and args.train:
+        actions_dict = {}
+        for agent in env.agents:
+          actions_dict[agent] = env.action_space("agent").sample() if not (terminated[agent] or truncated[agent]) else np.array([0,0])
+        actions = list(actions_dict.values())
+      else:
+        actions = maddpg_agents.choose_action(obs)
+        actions_list = []
+        for agent_idx, term in enumerate(terminated.values()):
+          if term:
+            actions_list.append(np.array([0, 0]))
+            actions[agent_idx] = np.array([0, 0])
+          else:
+            actions_list.append(actions[agent_idx]*np.array([env.max_angular_accel, env.max_accel]))
+        actions_dict = action_list_to_action_dict(actions_list)
 
-      actions_dict = action_list_to_action_dict(actions_list)
       obs_, rewards, terminated, truncated, infos_ = env.step(actions_dict)
       obs_ = unpack_dict(obs_)
       infos_ = flatten_dict(infos_)

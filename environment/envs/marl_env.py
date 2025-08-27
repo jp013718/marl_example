@@ -5,6 +5,13 @@ import gymnasium.spaces as spaces
 
 from pettingzoo import ParallelEnv
 
+# TODO: Diagnose issue with agent learning to spin in circles...
+# 1.  Ensure observations are accurate, i.e., when the agent is moving
+#     towards the goal, is the heading 0?
+# 2.  Ensure rewards are accurate
+# 3.  Handle any other inconsistencies before moving on to check that
+#     the algorithm is learning properly during training
+
 class MarlEnvironment(ParallelEnv):
   metadata = {
     "name": "Marl_Environment",

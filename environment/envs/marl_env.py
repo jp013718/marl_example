@@ -76,7 +76,7 @@ class MarlEnvironment(ParallelEnv):
         {
           # "x": spaces.Box(low=0, high=self.mapsize, shape=(1,), dtype=np.float64),
           # "y": spaces.Box(low=0, high=self.mapsize, shape=(1,), dtype=np.float64),
-          # "heading": spaces.Box(low=0, high=2*np.pi, shape=(1,), dtype=np.float64),
+          "heading": spaces.Box(low=0, high=2*np.pi, shape=(1,), dtype=np.float64),
           "speed": spaces.Box(low=0, high=self.max_speed, shape=(1,), dtype=np.float64),
           "angular_vel": spaces.Box(low=-self.max_angular_speed, high=self.max_angular_speed, shape=(1,), dtype=np.float64),
           "target_heading": spaces.Box(low=0, high=2*np.pi, shape=(1,), dtype=np.float64),
@@ -172,7 +172,7 @@ class MarlEnvironment(ParallelEnv):
         {
           # "x": self.agents_x[i],
           # "y": self.agents_y[i],
-          # "heading": self.agents_heading[i],
+          "heading": self.agents_heading[i],
           "speed": self.agents_speed[i],
           "angular_vel": self.agents_angular_vel[i],
           "target_heading": np.atan2(target_pos[1]-self.agents_y[i], target_pos[0]-self.agents_x[i]) - self.agents_heading[i],

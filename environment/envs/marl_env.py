@@ -5,13 +5,6 @@ import gymnasium.spaces as spaces
 
 from pettingzoo import ParallelEnv
 
-# TODO: Diagnose issue with agent learning to spin in circles...
-# 1.  Ensure observations are accurate, i.e., when the agent is moving
-#     towards the goal, is the heading 0?
-# 2.  Ensure rewards are accurate
-# 3.  Handle any other inconsistencies before moving on to check that
-#     the algorithm is learning properly during training
-
 class MarlEnvironment(ParallelEnv):
   metadata = {
     "name": "Marl_Environment",
@@ -180,11 +173,11 @@ class MarlEnvironment(ParallelEnv):
           # "y": self.agents_y[i],
           # "heading": self.agents_heading[i],
           "speed": self.agents_speed[i],
-          "target_heading": np.atan2(self.agents_y[i]-target_pos[1], self.agents_x[i]-target_pos[0]) - self.agents_heading[i],
+          "target_heading": np.atan2(target_pos[1]-self.agents_y[i], target_pos[0]-self.agents_x[i]) - self.agents_heading[i],
           "target_dist": np.sqrt((self.agents_x[i]-target_pos[0])**2+(self.agents_y[i]-target_pos[1])**2),
           "nearby_agents": {
             f"agent_{j}": {
-              "direction_to_agent": np.atan2(self.agents_y[i]-self.agents_y[neighbors[j]], self.agents_x[i]-self.agents_x[neighbors[j]]) - self.agents_heading[i],
+              "direction_to_agent": np.atan2(self.agents_y[neighbors[j]]-self.agents_y[i], self.agents_x[neighbors[j]]-self.agents_x[i]) - self.agents_heading[i],
               "agent_dist": np.sqrt((self.agents_x[i]-self.agents_x[neighbors[j]])**2+(self.agents_y[i]-self.agents_y[neighbors[j]])**2),
               "agent_heading": self.agents_heading[neighbors[j]]-self.agents_heading[i],
               "agent_speed": self.agents_speed[neighbors[j]],
@@ -211,7 +204,7 @@ class MarlEnvironment(ParallelEnv):
         rewards[self.agents[i]] += r_neighbor_prox/np.sqrt((self.agents_x[i]-self.agents_x[j])**2+(self.agents_y[i]-self.agents_y[j])**2) if np.sqrt((self.agents_x[i]-self.agents_x[j])**2+(self.agents_y[i]-self.agents_y[j])**2) > 0 else 2*r_neighbor_collision
         rewards[self.agents[i]] += r_neighbor_collision if np.sqrt((self.agents_x[i]-self.agents_x[j])**2+(self.agents_y[i]-self.agents_y[j])**2) < 2*self.metadata["agent_radius"] else 0
       
-      rewards[self.agents[i]] += r_target_prox/np.sqrt((self.agents_x[i]-target_pos[0])**2+(self.agents_y[i]-target_pos[1])**2)*(np.atan2(self.agents_y[i]-target_pos[1], self.agents_x[i]-target_pos[0])-self.agents_heading[i]) if np.sqrt((self.agents_x[i]-target_pos[0])**2+(self.agents_y[i]-target_pos[1])**2) > 0 else 2*r_target_reached
+      rewards[self.agents[i]] += r_target_prox/np.sqrt((self.agents_x[i]-target_pos[0])**2+(self.agents_y[i]-target_pos[1])**2)*np.cos(np.atan2(target_pos[1]-self.agents_y[i], target_pos[0]-self.agents_x[i])-self.agents_heading[i]) if np.sqrt((self.agents_x[i]-target_pos[0])**2+(self.agents_y[i]-target_pos[1])**2) > 0 else 2*r_target_reached
       rewards[self.agents[i]] += r_target_reached if np.sqrt((self.agents_x[i]-target_pos[0])**2+(self.agents_y[i]-target_pos[1])**2) < self.metadata["target_radius"] else 0
 
     return rewards
@@ -280,7 +273,7 @@ class MarlEnvironment(ParallelEnv):
       pygame.draw.circle(
         canvas,
         (0, 255, 255),
-        (target[0]*pix_size, target[1]*pix_size),
+        (target[0]*pix_size, self.mapsize*pix_size-target[1]*pix_size),
         pix_size*self.metadata["target_radius"]
       )
 
@@ -289,7 +282,7 @@ class MarlEnvironment(ParallelEnv):
       pygame.draw.circle(
         canvas,
         (0, 0, 255),
-        (self.agents_x[i]*pix_size, self.agents_y[i]*pix_size),
+        (self.agents_x[i]*pix_size, self.mapsize*pix_size-self.agents_y[i]*pix_size),
         pix_size*self.metadata["agent_radius"]
       )
       if self.render_vectors:
@@ -297,16 +290,16 @@ class MarlEnvironment(ParallelEnv):
         pygame.draw.line(
           canvas,
           (255, 0, 255),
-          (self.agents_x[i]*pix_size, self.agents_y[i]*pix_size),
-          ((self.agents_x[i]+self.agents_speed[i]/self.max_speed*np.cos(self.agents_heading[i]))*pix_size, (self.agents_y[i]+self.agents_speed[i]/self.max_speed*np.sin(self.agents_heading[i]))*pix_size),
+          (self.agents_x[i]*pix_size, self.mapsize*pix_size-self.agents_y[i]*pix_size),
+          ((self.agents_x[i]+self.agents_speed[i]/self.max_speed*np.cos(self.agents_heading[i]))*pix_size, self.mapsize*pix_size-(self.agents_y[i]+self.agents_speed[i]/self.max_speed*np.sin(self.agents_heading[i]))*pix_size),
           width=1,
         )
         # Acceleration vector
         pygame.draw.line(
           canvas,
           (0, 255, 0),
-          (self.agents_x[i]*pix_size, self.agents_y[i]*pix_size),
-          ((self.agents_x[i]+self.agents_accel[i]/self.max_accel*np.cos(self.agents_heading[i]+self.agents_angular_accel[i]))*pix_size, (self.agents_y[i]+self.agents_accel[i]/self.max_accel*np.sin(self.agents_heading[i]+self.agents_angular_accel[i]))*pix_size),
+          (self.agents_x[i]*pix_size, self.mapsize*pix_size-self.agents_y[i]*pix_size),
+          ((self.agents_x[i]+self.agents_accel[i]/self.max_accel*np.cos(self.agents_heading[i]+self.agents_angular_accel[i]))*pix_size, self.mapsize*pix_size-(self.agents_y[i]+self.agents_accel[i]/self.max_accel*np.sin(self.agents_heading[i]+self.agents_angular_accel[i]))*pix_size),
           width=1
         )
 

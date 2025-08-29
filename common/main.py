@@ -107,7 +107,7 @@ if __name__ == "__main__":
         actions_dict = {}
         for agent in env.agents:
           actions_dict[agent] = env.action_space("agent").sample() if not (terminated[agent] or truncated[agent]) else np.array([0,0])
-        actions = list(actions_dict.values())
+        actions = np.array(list(actions_dict.values()))/np.array([env.max_angular_accel, env.max_accel])
       else:
         actions = maddpg_agents.choose_action(obs)
         actions_list = []
@@ -118,6 +118,9 @@ if __name__ == "__main__":
           else:
             actions_list.append(actions[agent_idx]*np.array([env.max_angular_accel, env.max_accel]))
         actions_dict = action_list_to_action_dict(actions_list)
+
+      # print(actions)
+      # print(actions_dict)
 
       obs_, rewards, terminated, truncated, infos_ = env.step(actions_dict)
       obs_ = unpack_dict(obs_)

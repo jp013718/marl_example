@@ -71,7 +71,7 @@ if __name__ == "__main__":
     n_actions.append(env.action_space(agent_type).shape[0])
   critic_dims = len(list(flatten_dict(env._get_infos())))
 
-  maddpg_agents = MADDPG(actor_dims, critic_dims, 1, n_agents, n_actions, fc1=64, fc2=64, alpha=0.01, beta=0.01, scenario=scenario, chkpt_dir='tmp/maddpg/')
+  maddpg_agents = MADDPG(actor_dims, critic_dims, 1, n_agents, n_actions, fc1=512, fc2=512, alpha=0.01, beta=0.01, scenario=scenario, chkpt_dir='tmp/maddpg/')
 
   memories = [ReplayBuffer(1000000, critic_dims, actor_dims[agent_type], n_actions[agent_type], n_agents[agent_type], batch_size=1024*n_agents[i]) for i, agent_type in enumerate(agent_types.keys())]
 
@@ -106,8 +106,8 @@ if __name__ == "__main__":
       if i < N_EXPLORATION_GAMES and args.train:
         actions_dict = {}
         for agent in env.agents:
-          actions_dict[agent] = env.action_space("agent").sample() if not (terminated[agent] or truncated[agent]) else np.array([0,0])
-        actions = np.array(list(actions_dict.values()))/np.array([env.max_angular_accel, env.max_accel])
+          actions_dict[agent] = env.action_space("agent").sample() if not (terminated[agent] or truncated[agent]) else np.array([0,0], dtype=np.float64)
+        actions = np.array(list(actions_dict.values()), dtype=np.float64)/np.array([env.max_angular_accel, env.max_accel], dtype=np.float64)
       else:
         actions = maddpg_agents.choose_action(obs)
         actions_list = []
@@ -119,8 +119,7 @@ if __name__ == "__main__":
             actions_list.append(actions[agent_idx]*np.array([env.max_angular_accel, env.max_accel]))
         actions_dict = action_list_to_action_dict(actions_list)
 
-      # print(actions)
-      # print(actions_dict)
+      print(actions)
 
       obs_, rewards, terminated, truncated, infos_ = env.step(actions_dict)
       obs_ = unpack_dict(obs_)
@@ -130,7 +129,7 @@ if __name__ == "__main__":
       # state = obs_list_to_state_vector(obs)
       # state_ = obs_list_to_state_vector(obs_)
 
-      done = terminated.values() if not all(truncated.values()) else truncated.values()
+      done = list(terminated.values()) if not all(truncated.values()) else list(truncated.values())
       rewards_list = np.array(list(rewards.values()))
 
       for agent_type, n_agent_type in enumerate(n_agents):

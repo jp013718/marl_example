@@ -1,5 +1,6 @@
 import torch
 import torch.nn.functional as functional
+import numpy as np
 from models.maddpg.agent import Agent
 from models.maddpg.utils import ReplayBuffer
 
@@ -10,6 +11,7 @@ class MADDPG:
     self.n_agents = n_agents
     self.n_actions = n_actions
     chkpt_dir += scenario
+    
     self.agents = [
       Agent(
         actor_dims[agent_type], 
@@ -49,6 +51,8 @@ class MADDPG:
         agent_idx += 1
         actions.append(action)
 
+    actions = np.array(actions, dtype=np.float64)
+
     # for agent_idx, agent in enumerate(self.agents):
     #   action = agent.choose_action(raw_obs[agent_idx])
     #   actions.append(action)
@@ -64,7 +68,7 @@ class MADDPG:
     device = self.agents[agent_type].actor.device
 
     states = torch.tensor(states, dtype=torch.float).to(device)
-    actions = torch.tensor(actions, dtype=torch.float).to(device)
+    actions = torch.tensor(np.array(actions), dtype=torch.float).to(device)
     rewards = torch.tensor(rewards).to(device)
     states_ = torch.tensor(states_, dtype=torch.float).to(device)
     dones = torch.tensor(dones).to(device)
@@ -82,30 +86,37 @@ class MADDPG:
       all_agents_new_mu_actions.append(pi)
       old_agents_actions.append(actions[agent_sub_idx])
 
+    print(f"States...\n\n{actor_states}\n\nGlobal State...\n\n{states}\n\nActions...\n\n{actions}\n\nRewards...\n\n{rewards}\n\nNew Actor States...\n\n{actor_new_states}\n\nNew States...\n\n{states_}\n\nDones...\n\n{dones}")
+
     new_actions = torch.cat([acts for acts in all_agents_new_actions], dim=1)
     mu = torch.cat([acts for acts in all_agents_new_mu_actions], dim=1)
     old_actions = torch.cat([acts for acts in old_agents_actions], dim=1)
-
-    loss = torch.nn.MSELoss()
 
     self.agents[agent_type].critic.optimizer.zero_grad()
     self.agents[agent_type].actor.optimizer.zero_grad()
     for agent_sub_idx in range(self.n_agents[agent_type]):
       critic_value_ = self.agents[agent_type].target_critic.forward(states_, new_actions).flatten()
-      # critic_value_[dones[:,0]] = 0.0
+      critic_value_[dones[:,0]] = 0.0
       critic_value = self.agents[agent_type].critic.forward(states, old_actions).flatten().to(torch.double)
 
       target = rewards[:,agent_sub_idx] + self.agents[agent_type].gamma*critic_value_
-      critic_loss = loss(target, critic_value)
+      loss = functional.mse_loss(target, critic_value)
       # self.agents[agent_type].critic.optimizer.zero_grad()
-      critic_loss.backward(retain_graph=True)
+      loss.backward(retain_graph=True)
+      print(f"Loss: {loss}")
+      print(f"Target: {target}")
+      print(f"Critic Value: {critic_value}")
+      print(f"Critic Value_: {critic_value_}")
 
       actor_loss = self.agents[agent_type].critic.forward(states, mu).flatten()
       actor_loss = -torch.mean(actor_loss)
       # agent.actor.optimizer.zero_grad()
       actor_loss.backward(retain_graph=True)
 
-    
+      print(f"Actor Loss: {actor_loss}")
+
+    print("Stepping the critic optimizer...")
     self.agents[agent_type].critic.optimizer.step()
+    print("Stepping the actor optimizer...")
     self.agents[agent_type].actor.optimizer.step()
     self.agents[agent_type].update_network_parameters()

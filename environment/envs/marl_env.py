@@ -23,7 +23,7 @@ class MarlEnvironment(ParallelEnv):
       max_speed: np.float64=5, 
       max_angular_speed: np.float64=0.5*np.pi,
       max_accel: np.float64=1.0, 
-      max_angular_accel: np.float64=0.2*np.pi, 
+      max_angular_accel: np.float64=0.02*np.pi, 
       render_fps: int|None=None, 
       render_mode: str="human",
       render_vectors: bool=True,
@@ -80,13 +80,13 @@ class MarlEnvironment(ParallelEnv):
           "speed": spaces.Box(low=0, high=self.max_speed, shape=(1,), dtype=np.float64),
           "angular_vel": spaces.Box(low=-self.max_angular_speed, high=self.max_angular_speed, shape=(1,), dtype=np.float64),
           "target_heading": spaces.Box(low=0, high=2*np.pi, shape=(1,), dtype=np.float64),
-          "target_dist": spaces.Box(low=0, high=self.mapsize, shape=(1,), dtype=np.float64), 
+          "target_dist": spaces.Box(low=0, high=np.sqrt(2)*self.mapsize, shape=(1,), dtype=np.float64), 
           "nearby_agents": spaces.Dict(
             {
               f"agent_{i}": spaces.Dict(
                 {
                   "direction_to_agent": spaces.Box(low=0, high=2*np.pi, shape=(1,), dtype=np.float64),
-                  "agent_dist": spaces.Box(low=0, high=2*np.pi, shape=(1,), dtype=np.float64),
+                  "agent_dist": spaces.Box(low=0, high=np.sqrt(2)*self.mapsize, shape=(1,), dtype=np.float64),
                   "agent_heading": spaces.Box(low=0, high=2*np.pi, shape=(1,), dtype=np.float64),
                   "agent_speed": spaces.Box(low=0, high=self.max_speed, shape=(1,), dtype=np.float64)
                 }
@@ -127,14 +127,8 @@ class MarlEnvironment(ParallelEnv):
     for i, agent in enumerate(self.agents):
       action = actions[agent]
       
-      if action is None:
-        self.agents_accel[i] = 0
-        self.agents_angular_accel[i] = 0
-        self.agents_speed[i] = 0
-        self.agents_angular_vel[i] = 0
-      else:
-        self.agents_angular_accel[i] = action[0]
-        self.agents_accel[i] = action[1]
+      self.agents_angular_accel[i] = action[0]
+      self.agents_accel[i] = action[1]
 
       self.agents_angular_vel[i] += self.agents_angular_accel[i]
       self.agents_angular_vel[i] = np.minimum(self.max_angular_speed, np.maximum(-self.max_angular_speed, self.agents_angular_vel[i]))

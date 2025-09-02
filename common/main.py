@@ -51,6 +51,12 @@ if __name__ == "__main__":
   parser.add_argument('-d', '--duration', default=50001, type=int)
   parser.add_argument('-n', '--num_agents', default=3, type=int)
   parser.add_argument('-k', '--k_near_agents', default=2, type=int)
+  parser.add_argument('--fc1', default=64, type=int)
+  parser.add_argument('--fc2', default=64, type=int)
+  parser.add_argument('--alpha', default=0.01, type=float)
+  parser.add_argument('--beta', default=0.01, type=float)
+  parser.add_argument('--gamma', default=0.99, type=float)
+  parser.add_argument('--tau', default=0.01, type=float)
 
   args = parser.parse_args()
   
@@ -71,7 +77,7 @@ if __name__ == "__main__":
     n_actions.append(env.action_space(agent_type).shape[0])
   critic_dims = len(list(flatten_dict(env._get_infos())))
 
-  maddpg_agents = MADDPG(actor_dims, critic_dims, 1, n_agents, n_actions, fc1=512, fc2=512, alpha=0.01, beta=0.01, scenario=scenario, chkpt_dir='tmp/maddpg/')
+  maddpg_agents = MADDPG(actor_dims, critic_dims, 1, n_agents, n_actions, fc1=args.fc1, fc2=args.fc2, alpha=args.alpha, beta=args.beta, gamma=args.gamma, tau=args.tau, scenario=scenario, chkpt_dir='tmp/maddpg/')
 
   memories = [ReplayBuffer(1000000, critic_dims, actor_dims[agent_type], n_actions[agent_type], n_agents[agent_type], batch_size=1024*n_agents[i]) for i, agent_type in enumerate(agent_types.keys())]
 
@@ -81,12 +87,15 @@ if __name__ == "__main__":
   total_steps = 0
   score_history = []
   evaluate = not args.train
+  load_model = not (args.checkpoint is None)
   eval_model = args.checkpoint
   save_freq = 500
   best_score = -np.inf
 
-  if evaluate:
+  if load_model:
     maddpg_agents.load_checkpoint(eval_model)
+  
+  if evaluate:  
     env.render_mode = "human"
 
   for i in range(N_GAMES):
@@ -119,7 +128,7 @@ if __name__ == "__main__":
             actions_list.append(actions[agent_idx]*np.array([env.max_angular_accel, env.max_accel]))
         actions_dict = action_list_to_action_dict(actions_list)
 
-      print(actions)
+      # print(actions)
 
       obs_, rewards, terminated, truncated, infos_ = env.step(actions_dict)
       obs_ = unpack_dict(obs_)

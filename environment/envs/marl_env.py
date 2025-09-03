@@ -136,7 +136,7 @@ class MarlEnvironment(ParallelEnv):
       self.agents_speed[i] = np.minimum(self.max_speed, np.maximum(0, self.agents_speed[i]))
 
       self.agents_heading[i] += self.agents_angular_vel[i]
-      self.agents_heading[i] += 2*np.pi if self.agents_heading[i] < 0 else -2*np.pi if self.agents_heading[i] >= 2*np.pi else 0
+      self.agents_heading[i] = self.agents_heading[i]%(2*np.pi)
       self.agents_x[i] += self.agents_speed[i]*np.cos(self.agents_heading[i])
       self.agents_x[i] = np.minimum(self.mapsize, np.maximum(0, self.agents_x[i]))
       self.agents_y[i] += self.agents_speed[i]*np.sin(self.agents_heading[i])
@@ -169,13 +169,13 @@ class MarlEnvironment(ParallelEnv):
           # "heading": self.agents_heading[i],
           "speed": self.agents_speed[i],
           "angular_vel": self.agents_angular_vel[i],
-          "target_heading": np.atan2(target_pos[1]-self.agents_y[i], target_pos[0]-self.agents_x[i]) - self.agents_heading[i],
+          "target_heading": (np.atan2(target_pos[1]-self.agents_y[i], target_pos[0]-self.agents_x[i]) - self.agents_heading[i])%(2*np.pi),
           "target_dist": np.sqrt((self.agents_x[i]-target_pos[0])**2+(self.agents_y[i]-target_pos[1])**2),
           "nearby_agents": {
             f"agent_{j}": {
-              "direction_to_agent": np.atan2(self.agents_y[neighbors[j]]-self.agents_y[i], self.agents_x[neighbors[j]]-self.agents_x[i]) - self.agents_heading[i],
+              "direction_to_agent": (np.atan2(self.agents_y[neighbors[j]]-self.agents_y[i], self.agents_x[neighbors[j]]-self.agents_x[i]) - self.agents_heading[i])%(2*np.pi),
               "agent_dist": np.sqrt((self.agents_x[i]-self.agents_x[neighbors[j]])**2+(self.agents_y[i]-self.agents_y[neighbors[j]])**2),
-              "agent_heading": self.agents_heading[neighbors[j]]-self.agents_heading[i],
+              "agent_heading": (self.agents_heading[neighbors[j]]-self.agents_heading[i])%(2*np.pi),
               "agent_speed": self.agents_speed[neighbors[j]],
             } for j in range(self.num_near_agents)
           }

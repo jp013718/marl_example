@@ -79,15 +79,15 @@ class MarlEnvironment(ParallelEnv):
           # "heading": spaces.Box(low=0, high=2*np.pi, shape=(1,), dtype=np.float64),
           "speed": spaces.Box(low=0, high=self.max_speed, shape=(1,), dtype=np.float64),
           "angular_vel": spaces.Box(low=-self.max_angular_speed, high=self.max_angular_speed, shape=(1,), dtype=np.float64),
-          "target_heading": spaces.Box(low=0, high=2*np.pi, shape=(1,), dtype=np.float64),
+          "target_heading": spaces.Box(low=-np.pi, high=np.pi, shape=(1,), dtype=np.float64),
           "target_dist": spaces.Box(low=0, high=np.sqrt(2)*self.mapsize, shape=(1,), dtype=np.float64), 
           "nearby_agents": spaces.Dict(
             {
               f"agent_{i}": spaces.Dict(
                 {
-                  "direction_to_agent": spaces.Box(low=0, high=2*np.pi, shape=(1,), dtype=np.float64),
+                  "direction_to_agent": spaces.Box(low=-np.pi, high=np.pi, shape=(1,), dtype=np.float64),
                   "agent_dist": spaces.Box(low=0, high=np.sqrt(2)*self.mapsize, shape=(1,), dtype=np.float64),
-                  "agent_heading": spaces.Box(low=0, high=2*np.pi, shape=(1,), dtype=np.float64),
+                  "agent_heading": spaces.Box(low=-np.pi, high=np.pi, shape=(1,), dtype=np.float64),
                   "agent_speed": spaces.Box(low=0, high=self.max_speed, shape=(1,), dtype=np.float64)
                 }
               ) for i in range(self.num_near_agents)
@@ -202,7 +202,7 @@ class MarlEnvironment(ParallelEnv):
         rewards[self.agents[i]] += r_neighbor_collision if self._agent_dist(i, j) < 2*self.metadata["agent_radius"] else 0
       
       rewards[self.agents[i]] += r_target_prox/self._target_dist(i)*np.cos(self._target_heading(i))*self.agents_speed[i] if self._target_dist(i) > 0 else 0
-      # rewards[self.agents[i]] += r_facing_target*()
+      rewards[self.agents[i]] += r_facing_target*(np.exp(-(self.agents_heading[i]**2+self.agents_angular_vel[i]**2))+np.sin(1/np.pi*(0.25*self.agents_heading[i]**2+self.agents_angular_vel[i]**2))**15)*np.sign(self.agents_heading[i]*self.agents_angular_vel[i])
       rewards[self.agents[i]] += r_target_reached if self._target_dist(i) < self.metadata["target_radius"] else 0
 
     return rewards

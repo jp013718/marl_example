@@ -173,11 +173,11 @@ class MarlEnvironment(ParallelEnv):
           "target_dist": self._target_dist(i),
           "nearby_agents": {
             f"agent_{j}": {
-              "direction_to_agent": (np.atan2(self.agents_y[neighbors[j]]-self.agents_y[i], self.agents_x[neighbors[j]]-self.agents_x[i]) - self.agents_heading[i])%(2*np.pi),
+              "direction_to_agent": self._heading_to_agent(i, j),
               "agent_dist": self._agent_dist(i, j),
-              "agent_heading": (self.agents_heading[neighbors[j]]-self.agents_heading[i])%(2*np.pi),
-              "agent_speed": self.agents_speed[neighbors[j]],
-            } for j in range(self.num_near_agents)
+              "agent_heading": self._relative_heading(i, j),
+              "agent_speed": self.agents_speed[j],
+            } for j in neighbors[:self.num_near_agents]
           }
         }
       )
@@ -189,6 +189,7 @@ class MarlEnvironment(ParallelEnv):
     r_neighbor_prox = -1
     r_neighbor_collision = -1000
     r_target_prox = 10
+    r_facing_target = 10
     r_target_reached = 1.5*r_target_prox*self.max_timesteps
     
     rewards = {agent: 0 for agent in self.agents}
@@ -201,6 +202,7 @@ class MarlEnvironment(ParallelEnv):
         rewards[self.agents[i]] += r_neighbor_collision if self._agent_dist(i, j) < 2*self.metadata["agent_radius"] else 0
       
       rewards[self.agents[i]] += r_target_prox/self._target_dist(i)*np.cos(self._target_heading(i))*self.agents_speed[i] if self._target_dist(i) > 0 else 0
+      # rewards[self.agents[i]] += r_facing_target*()
       rewards[self.agents[i]] += r_target_reached if self._target_dist(i) < self.metadata["target_radius"] else 0
 
     return rewards
@@ -256,7 +258,19 @@ class MarlEnvironment(ParallelEnv):
     return np.sqrt((self.agents_x[i]-self.targets_x[i])**2+(self.agents_y[i]-self.targets_y[i])**2)
 
   def _target_heading(self, i):
-    return (np.atan2(self.targets_y[i]-self.agents_y[i], self.targets_x[i]-self.agents_x[i])-self.agents_heading[i])%(2*np.pi)
+    angle = (np.atan2(self.targets_y[i]-self.agents_y[i], self.targets_x[i]-self.agents_x[i])-self.agents_heading[i])%(2*np.pi)
+    angle -= 2*np.pi if angle > np.pi else 0
+    return angle
+  
+  def _heading_to_agent(self, i, j):
+    angle = (np.atan2(self.agents_y[j]-self.agents_y[i], self.agents_x[j]-self.agents_x[i]) - self.agents_heading[i])%(2*np.pi)
+    angle -= 2*np.pi if angle > np.pi else 0
+    return angle
+
+  def _relative_heading(self, i, j):
+    angle = (self.agents_heading[j]-self.agents_heading[i])%(2*np.pi)
+    angle -= 2*np.pi if angle > np.pi else 0
+    return angle
 
   def _render_frame(self):
     if self.window is None and self.render_mode == "human":

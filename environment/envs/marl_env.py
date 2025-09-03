@@ -159,7 +159,7 @@ class MarlEnvironment(ParallelEnv):
   def _get_obs(self):
     observations = {agent: {} for agent in self.agents}
     
-    for i, target_pos in enumerate(zip(self.targets_x, self.targets_y)):
+    for i in range(self.num_agents):
       neighbors = self._get_neighbors(i)
 
       observations[self.agents[i]].update(
@@ -169,12 +169,12 @@ class MarlEnvironment(ParallelEnv):
           # "heading": self.agents_heading[i],
           "speed": self.agents_speed[i],
           "angular_vel": self.agents_angular_vel[i],
-          "target_heading": (np.atan2(target_pos[1]-self.agents_y[i], target_pos[0]-self.agents_x[i]) - self.agents_heading[i])%(2*np.pi),
-          "target_dist": np.sqrt((self.agents_x[i]-target_pos[0])**2+(self.agents_y[i]-target_pos[1])**2),
+          "target_heading": self._target_heading(i),
+          "target_dist": self._target_dist(i),
           "nearby_agents": {
             f"agent_{j}": {
               "direction_to_agent": (np.atan2(self.agents_y[neighbors[j]]-self.agents_y[i], self.agents_x[neighbors[j]]-self.agents_x[i]) - self.agents_heading[i])%(2*np.pi),
-              "agent_dist": np.sqrt((self.agents_x[i]-self.agents_x[neighbors[j]])**2+(self.agents_y[i]-self.agents_y[neighbors[j]])**2),
+              "agent_dist": self._agent_dist(i, j),
               "agent_heading": (self.agents_heading[neighbors[j]]-self.agents_heading[i])%(2*np.pi),
               "agent_speed": self.agents_speed[neighbors[j]],
             } for j in range(self.num_near_agents)
@@ -193,15 +193,15 @@ class MarlEnvironment(ParallelEnv):
     
     rewards = {agent: 0 for agent in self.agents}
 
-    for i, target_pos in enumerate(zip(self.targets_x, self.targets_y)):
+    for i in range(self.num_agents):
       neighbors = self._get_neighbors(i)
       
       for j in neighbors:
-        rewards[self.agents[i]] += r_neighbor_prox/np.sqrt((self.agents_x[i]-self.agents_x[j])**2+(self.agents_y[i]-self.agents_y[j])**2) if np.sqrt((self.agents_x[i]-self.agents_x[j])**2+(self.agents_y[i]-self.agents_y[j])**2) > 0 else 2*r_neighbor_collision
-        rewards[self.agents[i]] += r_neighbor_collision if np.sqrt((self.agents_x[i]-self.agents_x[j])**2+(self.agents_y[i]-self.agents_y[j])**2) < 2*self.metadata["agent_radius"] else 0
+        rewards[self.agents[i]] += r_neighbor_prox/self._agent_dist(i, j) if self._agent_dist(i, j) > 0 else 0
+        rewards[self.agents[i]] += r_neighbor_collision if self._agent_dist(i, j) < 2*self.metadata["agent_radius"] else 0
       
-      rewards[self.agents[i]] += r_target_prox/np.sqrt((self.agents_x[i]-target_pos[0])**2+(self.agents_y[i]-target_pos[1])**2)*np.cos(np.atan2(target_pos[1]-self.agents_y[i], target_pos[0]-self.agents_x[i])-self.agents_heading[i])*self.agents_speed[i] if np.sqrt((self.agents_x[i]-target_pos[0])**2+(self.agents_y[i]-target_pos[1])**2) > 0 else 0
-      rewards[self.agents[i]] += r_target_reached if np.sqrt((self.agents_x[i]-target_pos[0])**2+(self.agents_y[i]-target_pos[1])**2) < self.metadata["target_radius"] else 0
+      rewards[self.agents[i]] += r_target_prox/self._target_dist(i)*np.cos(self._target_heading(i))*self.agents_speed[i] if self._target_dist(i) > 0 else 0
+      rewards[self.agents[i]] += r_target_reached if self._target_dist(i) < self.metadata["target_radius"] else 0
 
     return rewards
 
@@ -248,6 +248,15 @@ class MarlEnvironment(ParallelEnv):
 
     return neighbors
 
+
+  def _agent_dist(self, i, j):
+    return np.sqrt((self.agents_x[i]-self.agents_x[j])**2+(self.agents_y[i]-self.agents_y[j])**2)
+  
+  def _target_dist(self, i):
+    return np.sqrt((self.agents_x[i]-self.targets_x[i])**2+(self.agents_y[i]-self.targets_y[i])**2)
+
+  def _target_heading(self, i):
+    return (np.atan2(self.targets_y[i]-self.agents_y[i], self.targets_x[i]-self.agents_x[i])-self.agents_heading[i])%(2*np.pi)
 
   def _render_frame(self):
     if self.window is None and self.render_mode == "human":

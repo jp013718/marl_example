@@ -101,7 +101,6 @@ class MADDPG:
 
       target = rewards[:,agent_sub_idx] + self.agents[agent_type].gamma*critic_value_
       loss = functional.mse_loss(target, critic_value)
-      # self.agents[agent_type].critic.optimizer.zero_grad()
       loss.backward(retain_graph=True)
       print(f"Loss: {loss}")
       print(f"Target: {target}")
@@ -110,13 +109,10 @@ class MADDPG:
 
       actor_loss = self.agents[agent_type].critic.forward(states, mu).flatten()
       actor_loss = -torch.mean(actor_loss)
-      # agent.actor.optimizer.zero_grad()
       actor_loss.backward(retain_graph=True)
 
       print(f"Actor Loss: {actor_loss}")
 
-    print("Stepping the critic optimizer...")
     self.agents[agent_type].critic.optimizer.step()
-    print("Stepping the actor optimizer...")
     self.agents[agent_type].actor.optimizer.step()
     self.agents[agent_type].update_network_parameters()

@@ -128,7 +128,7 @@ if __name__ == "__main__":
             actions_list.append(actions[agent_idx]*np.array([env.max_angular_accel, env.max_accel]))
         actions_dict = action_list_to_action_dict(actions_list)
 
-      # print(actions)
+      print(actions)
 
       obs_, rewards, terminated, truncated, infos_ = env.step(actions_dict)
       obs_ = unpack_dict(obs_)

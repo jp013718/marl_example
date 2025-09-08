@@ -18,15 +18,16 @@ class Actor(nn.Module):
     self.pi = nn.Linear(fc1_dims, n_actions)
 
     self.optimizer = optim.Adam(self.parameters(), lr=alpha)
-    self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    # self.device = 'cpu'
+    # self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    self.device = 'cpu'
 
     self.to(self.device)
 
   def forward(self, state):
-    x1 = F.tanh(self.fc1(state))
-    x2 = F.tanh(self.fc2(x1))
-    pi = F.tanh(self.pi(x2))
+    x1 = F.relu(self.fc1(state))
+    x2 = F.relu(self.fc2(x1))
+    # pi = torch.softmax(self.pi(x2), dim=1)
+    pi = torch.tanh(self.pi(x2))
 
     return pi
   
@@ -50,8 +51,8 @@ class Critic(nn.Module):
     self.q = nn.Linear(fc2_dims, 1)
 
     self.optimizer = optim.Adam(self.parameters(), lr=beta)
-    self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-    # self.device = 'cpu'
+    # self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+    self.device = 'cpu'
 
     self.to(self.device)
 
@@ -126,6 +127,9 @@ class ReplayBuffer:
       actor_states.append(self.actor_state_memory[agent_idx][batch])
       actor_new_states.append(self.actor_new_state_memory[agent_idx][batch])
       actions.append(self.actor_action_memory[agent_idx][batch])
+
+    # print(list(zip(*actor_states)))
+    
 
     return actor_states, states, actions, rewards, actor_new_states, states_, terminal
   

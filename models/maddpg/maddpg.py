@@ -86,7 +86,7 @@ class MADDPG:
       all_agents_new_mu_actions.append(pi)
       old_agents_actions.append(actions[agent_sub_idx])
 
-    print(f"States...\n\n{actor_states}\n\nGlobal State...\n\n{states}\n\nActions...\n\n{actions}\n\nRewards...\n\n{rewards}\n\nNew Actor States...\n\n{actor_new_states}\n\nNew States...\n\n{states_}\n\nDones...\n\n{dones}")
+    # print(f"States...\n\n{actor_states}\n\nGlobal State...\n\n{states}\n\nActions...\n\n{actions}\n\nRewards...\n\n{rewards}\n\nNew Actor States...\n\n{actor_new_states}\n\nNew States...\n\n{states_}\n\nDones...\n\n{dones}")
 
     new_actions = torch.cat([acts for acts in all_agents_new_actions], dim=1)
     mu = torch.cat([acts for acts in all_agents_new_mu_actions], dim=1)
@@ -100,18 +100,18 @@ class MADDPG:
       critic_value = self.agents[agent_type].critic.forward(states, old_actions).flatten().to(torch.double)
 
       target = rewards[:,agent_sub_idx] + self.agents[agent_type].gamma*critic_value_
-      loss = functional.mse_loss(target, critic_value)
+      loss = functional.mse_loss(critic_value, target)
       loss.backward(retain_graph=True)
-      print(f"Loss: {loss}")
-      print(f"Target: {target}")
-      print(f"Critic Value: {critic_value}")
-      print(f"Critic Value_: {critic_value_}")
+      # print(f"Loss: {loss}")
+      # print(f"Target: {target}")
+      # print(f"Critic Value: {critic_value}")
+      # print(f"Critic Value_: {critic_value_}")
 
       actor_loss = self.agents[agent_type].critic.forward(states, mu).flatten()
       actor_loss = -torch.mean(actor_loss)
       actor_loss.backward(retain_graph=True)
 
-      print(f"Actor Loss: {actor_loss}")
+      # print(f"Actor Loss: {actor_loss}")
 
     self.agents[agent_type].critic.optimizer.step()
     self.agents[agent_type].actor.optimizer.step()

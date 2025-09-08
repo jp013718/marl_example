@@ -188,7 +188,7 @@ class MarlEnvironment(ParallelEnv):
   def _get_rewards(self, observations, actions):
     r_neighbor_prox = -1
     r_neighbor_collision = -1000
-    r_target_prox = 10
+    r_target_prox = 5
     r_facing_target = 10
     r_target_reached = 1.5*r_target_prox*self.max_timesteps
     
@@ -202,7 +202,7 @@ class MarlEnvironment(ParallelEnv):
         rewards[self.agents[i]] += r_neighbor_collision if self._agent_dist(i, j) < 2*self.metadata["agent_radius"] else 0
       
       rewards[self.agents[i]] += r_target_prox/self._target_dist(i)*np.cos(self._target_heading(i))*self.agents_speed[i] if self._target_dist(i) > 0 else 0
-      rewards[self.agents[i]] += r_facing_target*(np.exp(-(self.agents_heading[i]**2+self.agents_angular_vel[i]**2))+np.sin(1/np.pi*(0.25*self.agents_heading[i]**2+self.agents_angular_vel[i]**2))**15)*np.sign(self.agents_heading[i]*self.agents_angular_vel[i])
+      rewards[self.agents[i]] += r_facing_target*(np.exp(-(self._target_heading(i)**2+((np.pi/self.max_speed)**2)*self.agents_angular_vel[i]**2))+np.sin(((np.pi/2*self.max_speed)**2)/np.pi*(((self.max_speed/np.pi)**2)*self._target_heading(i)**2+self.agents_angular_vel[i]**2))**15)*np.sign(self._target_heading(i)*self.agents_angular_vel[i])
       rewards[self.agents[i]] += r_target_reached if self._target_dist(i) < self.metadata["target_radius"] else 0
 
     return rewards

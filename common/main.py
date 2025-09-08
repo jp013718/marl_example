@@ -115,20 +115,25 @@ if __name__ == "__main__":
       if i < N_EXPLORATION_GAMES and args.train:
         actions_dict = {}
         for agent in env.agents:
+          # actions_dict[agent] = env.action_space("agent").sample() if not (terminated[agent] or truncated[agent]) else np.array([0.5,0.5], dtype=np.float64)
           actions_dict[agent] = env.action_space("agent").sample() if not (terminated[agent] or truncated[agent]) else np.array([0,0], dtype=np.float64)
-        actions = np.array(list(actions_dict.values()), dtype=np.float64)/np.array([env.max_angular_accel, env.max_accel], dtype=np.float64)
+        # actions = (np.array(list(actions_dict.values()), dtype=np.float64)/np.array([env.max_angular_accel, env.max_accel], dtype=np.float64))/2+0.5
+        actions = (np.array(list(actions_dict.values()), dtype=np.float64)/np.array([env.max_angular_accel, env.max_accel], dtype=np.float64))
       else:
         actions = maddpg_agents.choose_action(obs)
         actions_list = []
         for agent_idx, term in enumerate(terminated.values()):
           if term:
+            # actions_list.append(np.array([0.5, 0.5]))
+            # actions[agent_idx] = np.array([0.5, 0.5])
             actions_list.append(np.array([0, 0]))
             actions[agent_idx] = np.array([0, 0])
           else:
-            actions_list.append(actions[agent_idx]*np.array([env.max_angular_accel, env.max_accel]))
+            # actions_list.append(2*(actions[agent_idx]-0.5)*np.array([env.max_angular_accel, env.max_accel]))
+            actions_list.append((actions[agent_idx])*np.array([env.max_angular_accel, env.max_accel]))
         actions_dict = action_list_to_action_dict(actions_list)
 
-      print(actions)
+      # print(actions)
 
       obs_, rewards, terminated, truncated, infos_ = env.step(actions_dict)
       obs_ = unpack_dict(obs_)

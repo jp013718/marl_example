@@ -18,9 +18,11 @@ class Agent:
   def choose_action(self, observation):
     state = torch.tensor([observation], dtype=torch.float).to(self.actor.device)
     actions = self.actor.forward(state)
-    # noise = 0.5*(torch.rand_like(actions)-torch.tensor([0.5, 0.5]))
-    action = actions
-    action.clamp(min=-1, max=1)
+    # noise = torch.rand_like(actions).to(self.actor.device)
+    noise = torch.tensor(torch.randn_like(actions)/3).to(self.actor.device)
+    action = actions + noise
+    # action.clamp(min=0, max=1)
+    action.clamp(-1, 1)
     
     return action.detach().cpu().numpy()[0]
   

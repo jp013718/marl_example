@@ -8,8 +8,8 @@ class Actor(nn.Module):
     def __init__(self, alpha, input_dims, fc1_dims, fc2_dims, n_actions, name, chkpt_dir):
         super(Actor, self).__init__()
         self.alpha = alpha
-        self.chkpt_file = os.path.join(name, chkpt_dir)
-        Path(self.chkpt_file).mkdir(parents=True, exist_ok=True)
+        self.chkpt_dir = chkpt_dir
+        self.filename = name
 
         self.fc1 = nn.Linear(input_dims, fc1_dims)
         self.fc2 = nn.Linear(fc1_dims, fc2_dims)
@@ -27,17 +27,18 @@ class Actor(nn.Module):
 
         return pi
 
-    def save_checkpoint(self, location):
-        torch.save(self.state_dict(), os.path.join(self.chkpt_file, location))
+    def save_checkpoint(self, location=''):
+        Path(os.path.join(self.chkpt_dir, location)).mkdir(parents=True, exist_ok=True)
+        torch.save(self.state_dict(), os.path.join(self.chkpt_dir, location, self.filename))
 
-    def load_checkpoint(self, location):
-        self.load_state_dict(torch.load(os.path.join(self.chkpt_file, location)))
+    def load_checkpoint(self, location=''):
+        self.load_state_dict(torch.load(os.path.join(self.chkpt_dir, location, self.filename)))
 
 class Critic(nn.Module):
     def __init__(self, beta, input_dims, fc1_dims, fc2_dims, n_agents, n_actions, name, chkpt_dir):
         self.beta = beta
-        self.chkpt_file = os.path.join(chkpt_dir, name)
-        Path(self.chkpt_file).mkdir(parents=True, exist_ok=True)
+        self.chkpt_dir = chkpt_dir
+        self.filename = name
 
         self.fc1 = nn.Linear(input_dims+n_agents*n_actions, fc1_dims)
         self.fc2 = nn.Linear(fc1_dims, fc2_dims)
@@ -55,8 +56,9 @@ class Critic(nn.Module):
 
         return q
     
-    def save_checkpoint(self, location):
-        torch.save(self.state_dict(), os.path.join(self.chkpt_file, location))
+    def save_checkpoint(self, location=''):
+        Path(os.path.join(self.chkpt_dir, location)).mkdir(parents=True, exist_ok=True)
+        torch.save(self.state_dict(), os.path.join(self.chkpt_dir, location, self.filename))
 
-    def load_checkpoint(self, location):
-        self.load_state_dict(torch.load(os.path.join(self.chkpt_file, location)))
+    def load_checkpoint(self, location=''):
+        self.load_state_dict(torch.load(os.path.join(self.chkpt_dir, location, self.filename)))

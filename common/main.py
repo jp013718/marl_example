@@ -4,7 +4,7 @@ import argparse
 import gymnasium.spaces as spaces
 sys.path.append("..")
 from models.maddpg.maddpg import MADDPG
-from models.maddpg.utils import ReplayBuffer
+from models.maddpg.buffer import ReplayBuffer
 from environment.envs.marl_env import MarlEnvironment
 
 import torch

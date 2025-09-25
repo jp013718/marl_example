@@ -21,9 +21,9 @@ class Actor(nn.Module):
         self.to(self.device)
 
     def forward(self, x):
-        x1 = nn.ReLU(self.fc1(x))
-        x2 = nn.ReLU(self.fc2(x1))
-        pi = nn.Tanh(self.pi(x2))
+        x1 = nn.functional.relu(self.fc1(x))
+        x2 = nn.functional.relu(self.fc2(x1))
+        pi = nn.functional.tanh(self.pi(x2))
 
         return pi
 
@@ -36,6 +36,7 @@ class Actor(nn.Module):
 
 class Critic(nn.Module):
     def __init__(self, beta, input_dims, fc1_dims, fc2_dims, n_agents, n_actions, name, chkpt_dir):
+        super(Critic, self).__init__()
         self.beta = beta
         self.chkpt_dir = chkpt_dir
         self.filename = name
@@ -44,14 +45,14 @@ class Critic(nn.Module):
         self.fc2 = nn.Linear(fc1_dims, fc2_dims)
         self.q = nn.Linear(fc2_dims, 1)
 
-        self.optim = optim.Adam(self.parameters(), lr=beta)
+        self.optimizer = optim.Adam(self.parameters(), lr=beta)
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
         self.to(self.device)
 
     def forward(self, x):
-        x1 = nn.ReLU(self.fc1(x))
-        x2 = nn.ReLU(self.fc2(x1))
+        x1 = nn.functional.relu(self.fc1(x))
+        x2 = nn.functional.relu(self.fc2(x1))
         q = self.q(x2)
 
         return q

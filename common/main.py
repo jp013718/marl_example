@@ -67,9 +67,9 @@ if __name__ == "__main__":
       raise e("No checkpoint specified for evaluation. Use the flag -c [checkpoint] or --checkpoint [checkpoint]")
 
   scenario = "simple"
-  n_agents = [int(args.num_agents)]
+  n_agents = args.num_agents
   agent_types = {0: "agent"}
-  env = MarlEnvironment(n_agents=n_agents[0], num_near_agents=args.k_near_agents,render_mode=None)
+  env = MarlEnvironment(n_agents=n_agents, num_near_agents=args.k_near_agents,render_mode=None)
   actor_dims = []
   n_actions = []
   for agent_type in agent_types.values():
@@ -77,9 +77,9 @@ if __name__ == "__main__":
     n_actions.append(env.action_space(agent_type).shape[0])
   critic_dims = len(list(flatten_dict(env._get_infos())))
 
-  maddpg_agents = MADDPG(actor_dims, critic_dims, 1, n_agents, n_actions, fc1=args.fc1, fc2=args.fc2, alpha=args.alpha, beta=args.beta, gamma=args.gamma, tau=args.tau, scenario=scenario, chkpt_dir='tmp/maddpg/')
+  maddpg_agents = MADDPG(actor_dims[0], critic_dims, n_agents, 0, n_actions[0], minibatch_size=64, fc1=args.fc1, fc2=args.fc2, alpha=args.alpha, beta=args.beta, gamma=args.gamma, tau=args.tau, scenario=scenario, chkpt_dir='tmp/maddpg/')
 
-  memories = [ReplayBuffer(1000000, critic_dims, actor_dims[agent_type], n_actions[agent_type], n_agents[agent_type], batch_size=1024*n_agents[i]) for i, agent_type in enumerate(agent_types.keys())]
+  memories = ReplayBuffer(1000000, critic_dims, actor_dims[0], n_actions[0], n_agents, batch_size=1024*n_agents)
 
   PRINT_INTERVAL = 10
   N_GAMES = args.duration
@@ -106,7 +106,7 @@ if __name__ == "__main__":
     terminated = {agent: False for agent in env.agents}
     truncated = {agent: False for agent in env.agents}
     episode_step = 0
-    done = [False]*sum(n_agents)
+    done = [False]*n_agents
 
     while not all(done):
       if evaluate:
@@ -121,6 +121,7 @@ if __name__ == "__main__":
         actions = (np.array(list(actions_dict.values()), dtype=np.float64)/np.array([env.max_angular_accel, env.max_accel], dtype=np.float64))
       else:
         actions = maddpg_agents.choose_action(obs)
+        # print(actions)
         actions_list = []
         for agent_idx, term in enumerate(terminated.values()):
           if term:
@@ -133,8 +134,6 @@ if __name__ == "__main__":
             actions_list.append((actions[agent_idx])*np.array([env.max_angular_accel, env.max_accel]))
         actions_dict = action_list_to_action_dict(actions_list)
 
-      # print(actions)
-
       obs_, rewards, terminated, truncated, infos_ = env.step(actions_dict)
       obs_ = unpack_dict(obs_)
       infos_ = flatten_dict(infos_)
@@ -146,21 +145,18 @@ if __name__ == "__main__":
       done = list(terminated.values()) if not all(truncated.values()) else list(truncated.values())
       rewards_list = np.array(list(rewards.values()))
 
-      for agent_type, n_agent_type in enumerate(n_agents):
-        slice_start = sum(n_agents[0:agent_type])
-        slice_end = sum(n_agents[0:agent_type])+n_agent_type+1
-        memories[agent_type].store_transition(
-          obs[slice_start:slice_end], 
-          state, 
-          actions[slice_start:slice_end], 
-          rewards_list[slice_start:slice_end], 
-          obs_[slice_start:slice_end], 
-          state_, 
-          done
-        )
+      memories.store_transition(
+        obs,
+        state,
+        actions,
+        rewards_list,
+        obs_,
+        state_,
+        done
+      )
 
-        if total_steps % 100 == 0 and not evaluate:
-          maddpg_agents.learn(agent_type, memories[agent_type])
+      if total_steps % 100 == 0 and not evaluate:
+        maddpg_agents.learn(memories)
 
       obs = obs_
       infos = infos_

@@ -7,7 +7,7 @@ class Agent:
         self.gamma = gamma
         self.tau = tau
         self.n_actions = n_actions
-        self.agent_name = 'agent_'+agent_type
+        self.agent_name = f'agent_{agent_type}'
 
         self.actor = Actor(alpha, actor_dims, fc1, fc2, n_actions, name=self.agent_name+'_actor', chkpt_dir=chkpt_dir)
         self.target_actor = Actor(alpha, actor_dims, fc1, fc2, n_actions, name=self.agent_name+'_target_actor', chkpt_dir=chkpt_dir)
@@ -23,7 +23,7 @@ class Agent:
         action = action+noise
         action.clip(min=-1, max=1)
         
-        return action.detach().cpu().numpy()[0]
+        return action.detach().cpu().numpy()
 
     def update_network_parameters(self, tau=None):
         if tau is None:

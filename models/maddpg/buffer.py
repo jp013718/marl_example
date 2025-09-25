@@ -13,21 +13,19 @@ class ReplayBuffer:
 
     def store_transition(self, raw_obs, state, action, reward, raw_obs_, state_, done):
         mem_idx = self.mem_cntr % self.mem_size
-        for i in self.n_agents:
-            self.memory[mem_idx].update(
-                {
-                    "observation": raw_obs[i],
-                    "state": state,
-                    "action": action[i],
-                    "all_actions": action,
-                    "reward": reward[i],
-                    "observation_": raw_obs_[i],
-                    "state_": state_,
-                    "done": done,
-                }
-            )
+        self.memory[mem_idx].update(
+            {
+                "observation": raw_obs,
+                "state": state,
+                "action": action,
+                "reward": reward,
+                "observation_": raw_obs_,
+                "state_": state_,
+                "done": done,
+            }
+        )
             
-            self.mem_cntr += 1
+        self.mem_cntr += 1
 
     def sample_buffer(self):
         max_mem = min(self.mem_cntr, self.mem_size)

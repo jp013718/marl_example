@@ -63,8 +63,8 @@ class MADDPG:
             for i in range(self.n_agents):
               obs = observations[:,i,:]
               obs_ = observations_[:,i,:]
-              new_agent_actions = self.agent.target_actor.forward(obs_).detach().numpy()
-              new_mu_actions = self.agent.actor.forward(obs).detach().numpy()
+              new_agent_actions = self.agent.target_actor.forward(obs_).detach().cpu().numpy()
+              new_mu_actions = self.agent.actor.forward(obs).detach().cpu().numpy()
               new_actions.append(new_agent_actions)
               mu.append(new_mu_actions)
 

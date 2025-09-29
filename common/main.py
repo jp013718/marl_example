@@ -52,6 +52,7 @@ if __name__ == "__main__":
   parser.add_argument('-n', '--num_agents', default=3, type=int)
   parser.add_argument('-k', '--k_near_agents', default=2, type=int)
   parser.add_argument('-m', '--minibatch_size', default=64, type=int)
+  parser.add_argument('-e', '--eval', action='store_true')
   parser.add_argument('--fc1', default=64, type=int)
   parser.add_argument('--fc2', default=64, type=int)
   parser.add_argument('--alpha', default=0.01, type=float)
@@ -122,7 +123,6 @@ if __name__ == "__main__":
         actions = (np.array(list(actions_dict.values()), dtype=np.float64)/np.array([env.max_angular_accel, env.max_accel], dtype=np.float64))
       else:
         actions = maddpg_agents.choose_action(obs)
-        # print(actions)
         actions_list = []
         for agent_idx, term in enumerate(terminated.values()):
           if term:
@@ -134,6 +134,9 @@ if __name__ == "__main__":
             # actions_list.append(2*(actions[agent_idx]-0.5)*np.array([env.max_angular_accel, env.max_accel]))
             actions_list.append((actions[agent_idx])*np.array([env.max_angular_accel, env.max_accel]))
         actions_dict = action_list_to_action_dict(actions_list)
+
+      if args.eval:
+        print(actions)
 
       obs_, rewards, terminated, truncated, infos_ = env.step(actions_dict)
       obs_ = unpack_dict(obs_)

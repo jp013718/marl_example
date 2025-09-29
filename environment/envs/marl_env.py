@@ -188,7 +188,7 @@ class MarlEnvironment(ParallelEnv):
   def _get_rewards(self, observations, actions):
     r_neighbor_prox = -1
     r_neighbor_collision = -1000
-    r_target_prox = 5
+    r_target_prox = 75
     r_facing_target = 10
     r_target_reached = 1.5*r_target_prox*self.max_timesteps
     

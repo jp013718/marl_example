@@ -120,7 +120,7 @@ if __name__ == "__main__":
           # actions_dict[agent] = env.action_space("agent").sample() if not (terminated[agent] or truncated[agent]) else np.array([0.5,0.5], dtype=np.float64)
           actions_dict[agent] = env.action_space("agent").sample() if not (terminated[agent] or truncated[agent]) else np.array([0,0], dtype=np.float64)
         # actions = (np.array(list(actions_dict.values()), dtype=np.float64)/np.array([env.max_angular_accel, env.max_accel], dtype=np.float64))/2+0.5
-        actions = (np.array(list(actions_dict.values()), dtype=np.float64)/np.array([env.max_angular_accel, env.max_accel], dtype=np.float64))
+        actions = (np.array(list(actions_dict.values()), dtype=np.float64)/np.array([env.max_angular_speed, env.max_speed/2], dtype=np.float64))+np.array([0, -1])
       else:
         actions = maddpg_agents.choose_action(obs)
         actions_list = []
@@ -128,11 +128,11 @@ if __name__ == "__main__":
           if term:
             # actions_list.append(np.array([0.5, 0.5]))
             # actions[agent_idx] = np.array([0.5, 0.5])
-            actions_list.append(np.array([0, 0]))
-            actions[agent_idx] = np.array([0, 0])
+            actions_list.append(np.array([0, -1]))
+            actions[agent_idx] = np.array([0, -1])
           else:
             # actions_list.append(2*(actions[agent_idx]-0.5)*np.array([env.max_angular_accel, env.max_accel]))
-            actions_list.append((actions[agent_idx])*np.array([env.max_angular_accel, env.max_accel]))
+            actions_list.append((actions[agent_idx])*np.array([env.max_angular_speed, env.max_speed/2])+np.array([0, env.max_speed/2]))
         actions_dict = action_list_to_action_dict(actions_list)
 
       if args.eval:

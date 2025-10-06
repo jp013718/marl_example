@@ -1,11 +1,9 @@
 import sys
 sys.path.append("..")
 
-from models.maddpg.agent import Agent
 from environment.envs.marl_env import MarlEnvironment
 
 if __name__ == "__main__":
-  # agents = [Agent(name=f"agent_{i}") for i in range(5)]
   env = MarlEnvironment(
     mapsize=50
   )

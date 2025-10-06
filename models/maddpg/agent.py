@@ -20,7 +20,7 @@ class Agent:
         observation = torch.tensor(obs, dtype=torch.float).to(self.actor.device)
         action = self.actor.forward(observation)
         noise = torch.tensor(np.random.random(size=2)*2-1).to(self.actor.device)
-        action = action+noise
+        # action = action+noise
         action.clip(min=-1, max=1)
         
         return action.detach().cpu().numpy()

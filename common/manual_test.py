@@ -144,9 +144,9 @@ if __name__ == "__main__":
       actions = {}
       for i, agent in enumerate(env.agents):
         if i == active_agent:
-          speed = -scale_analog_output(inputs[0], 0, 255, -1, 1, 0.025)*env.max_speed
+          speed = -scale_analog_output(inputs[0], 0, 255, -1, 1, 0.03)*env.max_speed
           speed = max(0, min(speed, env.max_speed))
-          omega = -scale_analog_output(inputs[1], 0, 255, -1, 1, 0.025)*env.max_angular_speed
+          omega = -scale_analog_output(inputs[1], 0, 255, -1, 1, 0.03)*env.max_angular_speed
 
           actions[agent] = [omega, speed]
         

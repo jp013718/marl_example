@@ -22,8 +22,8 @@ class MarlEnvironment(ParallelEnv):
       num_near_agents: int=2, 
       max_speed: np.float64=1.0, 
       max_angular_speed: np.float64=np.pi/12,
-      max_accel: np.float64=0.75, 
-      max_angular_accel: np.float64=np.pi/16, 
+      # max_accel: np.float64=0.75, 
+      # max_angular_accel: np.float64=np.pi/16, 
       render_fps: int|None=None, 
       render_mode: str="human",
       render_vectors: bool=True,
@@ -33,8 +33,8 @@ class MarlEnvironment(ParallelEnv):
     self.max_timesteps = max_timesteps
     self.max_speed = max_speed
     self.max_angular_speed = max_angular_speed
-    self.max_accel = max_accel
-    self.max_angular_accel = max_angular_accel
+    # self.max_accel = max_accel
+    # self.max_angular_accel = max_angular_accel
     self.agents = [f"agent_{i}" for i in range(n_agents)]
 
     try:
@@ -98,7 +98,7 @@ class MarlEnvironment(ParallelEnv):
     }
 
     self.action_spaces = {
-      "agent": spaces.Box(low=np.array([-self.max_angular_accel, -self.max_accel]), high=np.array([self.max_angular_accel, self.max_accel]), shape=(2,), dtype=np.float64)
+      "agent": spaces.Box(low=np.array([-self.max_angular_speed, 0]), high=np.array([self.max_angular_speed, self.max_speed]), shape=(2,), dtype=np.float64)
     }
 
 
@@ -127,13 +127,13 @@ class MarlEnvironment(ParallelEnv):
     for i, agent in enumerate(self.agents):
       action = actions[agent]
       
-      self.agents_angular_accel[i] = action[0]
-      self.agents_accel[i] = action[1]
+      # self.agents_angular_accel[i] = action[0]
+      # self.agents_accel[i] = action[1]
 
-      self.agents_angular_vel[i] += self.agents_angular_accel[i]
-      self.agents_angular_vel[i] = np.minimum(self.max_angular_speed, np.maximum(-self.max_angular_speed, self.agents_angular_vel[i]))
-      self.agents_speed[i] += self.agents_accel[i]
-      self.agents_speed[i] = np.minimum(self.max_speed, np.maximum(0, self.agents_speed[i]))
+      self.agents_angular_vel[i] = action[0]
+      # self.agents_angular_vel[i] = np.minimum(self.max_angular_speed, np.maximum(-self.max_angular_speed, self.agents_angular_vel[i]))
+      self.agents_speed[i] = action[1]
+      # self.agents_speed[i] = np.minimum(self.max_speed, np.maximum(0, self.agents_speed[i]))
 
       self.agents_heading[i] += self.agents_angular_vel[i]
       self.agents_heading[i] = self.agents_heading[i]%(2*np.pi)
@@ -188,7 +188,7 @@ class MarlEnvironment(ParallelEnv):
   def _get_rewards(self, observations, actions):
     r_neighbor_prox = -1
     r_neighbor_collision = -1000
-    r_target_prox = 5
+    r_target_prox = 75
     r_facing_target = 10
     r_target_reached = 1.5*r_target_prox*self.max_timesteps
     
@@ -201,8 +201,8 @@ class MarlEnvironment(ParallelEnv):
         rewards[self.agents[i]] += r_neighbor_prox/self._agent_dist(i, j) if self._agent_dist(i, j) > 0 else 0
         rewards[self.agents[i]] += r_neighbor_collision if self._agent_dist(i, j) < 2*self.metadata["agent_radius"] else 0
       
-      rewards[self.agents[i]] += r_target_prox/self._target_dist(i)*np.cos(self._target_heading(i))*self.agents_speed[i] if self._target_dist(i) > 0 else 0
-      rewards[self.agents[i]] += r_facing_target*(np.exp(-(self._target_heading(i)**2+((np.pi/self.max_angular_speed)**2)*self.agents_angular_vel[i]**2))+np.sin((np.pi/(4*self.max_angular_speed**2))*(((self.max_angular_speed/np.pi)**2)*self._target_heading(i)**2+self.agents_angular_vel[i]**2))*np.sign(self._target_heading(i)*self.agents_angular_vel[i]))
+      rewards[self.agents[i]] += r_target_prox/self._target_dist(i)*np.cos(self._target_heading(i)) if self._target_dist(i) > 0 else 0
+      rewards[self.agents[i]] += r_facing_target*(np.exp(-(self._target_heading(i)**2+((np.pi/self.max_angular_speed)**2)*self.agents_angular_vel[i]**2))+(np.sin((np.pi/(4*self.max_angular_speed**2))*(((self.max_angular_speed/np.pi)**2)*self._target_heading(i)**2+self.agents_angular_vel[i]**2))**16))*(1 if self._target_heading(i)*self.agents_angular_vel[i] >= 0 else -1)
       rewards[self.agents[i]] += r_target_reached if self._target_dist(i) < self.metadata["target_radius"] else 0
 
     return rewards
@@ -312,16 +312,23 @@ class MarlEnvironment(ParallelEnv):
           (255, 0, 255),
           (self.agents_x[i]*pix_size, self.mapsize*pix_size-self.agents_y[i]*pix_size),
           ((self.agents_x[i]+self.agents_speed[i]/self.max_speed*np.cos(self.agents_heading[i]))*pix_size, self.mapsize*pix_size-(self.agents_y[i]+self.agents_speed[i]/self.max_speed*np.sin(self.agents_heading[i]))*pix_size),
+          width=5,
+        )
+        pygame.draw.line(
+          canvas,
+          (255, 0, 255),
+          (self.agents_x[i]*pix_size, self.mapsize*pix_size-self.agents_y[i]*pix_size),
+          ((self.agents_x[i]+self.max_speed*np.cos(self.agents_heading[i]))*pix_size, self.mapsize*pix_size-(self.agents_y[i]+self.max_speed*np.sin(self.agents_heading[i]))*pix_size),
           width=1,
         )
         # Acceleration vector
-        pygame.draw.line(
-          canvas,
-          (0, 255, 0),
-          (self.agents_x[i]*pix_size, self.mapsize*pix_size-self.agents_y[i]*pix_size),
-          ((self.agents_x[i]+self.agents_accel[i]/self.max_accel*np.cos(self.agents_heading[i]+self.agents_angular_accel[i]))*pix_size, self.mapsize*pix_size-(self.agents_y[i]+self.agents_accel[i]/self.max_accel*np.sin(self.agents_heading[i]+self.agents_angular_accel[i]))*pix_size),
-          width=1
-        )
+        # pygame.draw.line(
+        #   canvas,
+        #   (0, 255, 0),
+        #   (self.agents_x[i]*pix_size, self.mapsize*pix_size-self.agents_y[i]*pix_size),
+        #   ((self.agents_x[i]+self.agents_accel[i]/self.max_accel*np.cos(self.agents_heading[i]+self.agents_angular_accel[i]))*pix_size, self.mapsize*pix_size-(self.agents_y[i]+self.agents_accel[i]/self.max_accel*np.sin(self.agents_heading[i]+self.agents_angular_accel[i]))*pix_size),
+        #   width=1
+        # )
 
     if self.render_mode == "human":
       self.window.blit(canvas, canvas.get_rect())

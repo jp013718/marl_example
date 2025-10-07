@@ -4,7 +4,7 @@ import argparse
 import gymnasium.spaces as spaces
 sys.path.append("..")
 from models.maddpg.maddpg import MADDPG
-from models.maddpg.utils import ReplayBuffer
+from models.maddpg.buffer import ReplayBuffer
 from environment.envs.marl_env import MarlEnvironment
 
 import torch
@@ -51,6 +51,8 @@ if __name__ == "__main__":
   parser.add_argument('-d', '--duration', default=50001, type=int)
   parser.add_argument('-n', '--num_agents', default=3, type=int)
   parser.add_argument('-k', '--k_near_agents', default=2, type=int)
+  parser.add_argument('-m', '--minibatch_size', default=64, type=int)
+  parser.add_argument('-e', '--eval', action='store_true')
   parser.add_argument('--fc1', default=64, type=int)
   parser.add_argument('--fc2', default=64, type=int)
   parser.add_argument('--alpha', default=0.01, type=float)
@@ -67,9 +69,9 @@ if __name__ == "__main__":
       raise e("No checkpoint specified for evaluation. Use the flag -c [checkpoint] or --checkpoint [checkpoint]")
 
   scenario = "simple"
-  n_agents = [int(args.num_agents)]
+  n_agents = args.num_agents
   agent_types = {0: "agent"}
-  env = MarlEnvironment(n_agents=n_agents[0], num_near_agents=args.k_near_agents,render_mode=None)
+  env = MarlEnvironment(n_agents=n_agents, num_near_agents=args.k_near_agents,render_mode=None)
   actor_dims = []
   n_actions = []
   for agent_type in agent_types.values():
@@ -77,9 +79,9 @@ if __name__ == "__main__":
     n_actions.append(env.action_space(agent_type).shape[0])
   critic_dims = len(list(flatten_dict(env._get_infos())))
 
-  maddpg_agents = MADDPG(actor_dims, critic_dims, 1, n_agents, n_actions, fc1=args.fc1, fc2=args.fc2, alpha=args.alpha, beta=args.beta, gamma=args.gamma, tau=args.tau, scenario=scenario, chkpt_dir='tmp/maddpg/')
+  maddpg_agents = MADDPG(actor_dims[0], critic_dims, n_agents, 0, n_actions[0], minibatch_size=args.minibatch_size, fc1=args.fc1, fc2=args.fc2, alpha=args.alpha, beta=args.beta, gamma=args.gamma, tau=args.tau, scenario=scenario, chkpt_dir='tmp/maddpg/')
 
-  memories = [ReplayBuffer(1000000, critic_dims, actor_dims[agent_type], n_actions[agent_type], n_agents[agent_type], batch_size=1024*n_agents[i]) for i, agent_type in enumerate(agent_types.keys())]
+  memories = ReplayBuffer(1000000, critic_dims, actor_dims[0], n_actions[0], n_agents, batch_size=1024*n_agents)
 
   PRINT_INTERVAL = 10
   N_GAMES = args.duration
@@ -106,7 +108,7 @@ if __name__ == "__main__":
     terminated = {agent: False for agent in env.agents}
     truncated = {agent: False for agent in env.agents}
     episode_step = 0
-    done = [False]*sum(n_agents)
+    done = [False]*n_agents
 
     while not all(done):
       if evaluate:
@@ -118,7 +120,7 @@ if __name__ == "__main__":
           # actions_dict[agent] = env.action_space("agent").sample() if not (terminated[agent] or truncated[agent]) else np.array([0.5,0.5], dtype=np.float64)
           actions_dict[agent] = env.action_space("agent").sample() if not (terminated[agent] or truncated[agent]) else np.array([0,0], dtype=np.float64)
         # actions = (np.array(list(actions_dict.values()), dtype=np.float64)/np.array([env.max_angular_accel, env.max_accel], dtype=np.float64))/2+0.5
-        actions = (np.array(list(actions_dict.values()), dtype=np.float64)/np.array([env.max_angular_accel, env.max_accel], dtype=np.float64))
+        actions = (np.array(list(actions_dict.values()), dtype=np.float64)/np.array([env.max_angular_speed, env.max_speed/2], dtype=np.float64))+np.array([0, -1])
       else:
         actions = maddpg_agents.choose_action(obs)
         actions_list = []
@@ -126,14 +128,15 @@ if __name__ == "__main__":
           if term:
             # actions_list.append(np.array([0.5, 0.5]))
             # actions[agent_idx] = np.array([0.5, 0.5])
-            actions_list.append(np.array([0, 0]))
-            actions[agent_idx] = np.array([0, 0])
+            actions_list.append(np.array([0, -1]))
+            actions[agent_idx] = np.array([0, -1])
           else:
             # actions_list.append(2*(actions[agent_idx]-0.5)*np.array([env.max_angular_accel, env.max_accel]))
-            actions_list.append((actions[agent_idx])*np.array([env.max_angular_accel, env.max_accel]))
+            actions_list.append((actions[agent_idx])*np.array([env.max_angular_speed, env.max_speed/2])+np.array([0, env.max_speed/2]))
         actions_dict = action_list_to_action_dict(actions_list)
 
-      # print(actions)
+      if args.eval:
+        print(actions)
 
       obs_, rewards, terminated, truncated, infos_ = env.step(actions_dict)
       obs_ = unpack_dict(obs_)
@@ -146,21 +149,18 @@ if __name__ == "__main__":
       done = list(terminated.values()) if not all(truncated.values()) else list(truncated.values())
       rewards_list = np.array(list(rewards.values()))
 
-      for agent_type, n_agent_type in enumerate(n_agents):
-        slice_start = sum(n_agents[0:agent_type])
-        slice_end = sum(n_agents[0:agent_type])+n_agent_type+1
-        memories[agent_type].store_transition(
-          obs[slice_start:slice_end], 
-          state, 
-          actions[slice_start:slice_end], 
-          rewards_list[slice_start:slice_end], 
-          obs_[slice_start:slice_end], 
-          state_, 
-          done
-        )
+      memories.store_transition(
+        obs,
+        state,
+        actions,
+        rewards_list,
+        obs_,
+        state_,
+        done
+      )
 
-        if total_steps % 100 == 0 and not evaluate:
-          maddpg_agents.learn(agent_type, memories[agent_type])
+      if total_steps % 100 == 0 and not evaluate:
+        maddpg_agents.learn(memories)
 
       obs = obs_
       infos = infos_

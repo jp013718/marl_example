@@ -114,7 +114,7 @@ if __name__ == "__main__":
       if evaluate:
         env.render()
 
-      if i < N_EXPLORATION_GAMES and args.train:
+      if i < N_EXPLORATION_GAMES and args.train and args.checkpoint is not None:
         actions_dict = {}
         for agent in env.agents:
           # actions_dict[agent] = env.action_space("agent").sample() if not (terminated[agent] or truncated[agent]) else np.array([0.5,0.5], dtype=np.float64)

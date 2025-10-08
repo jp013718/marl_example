@@ -73,6 +73,9 @@ class MADDPG:
             mu = np.array(mu)
             mu = torch.tensor(np.array([mu[:,i,:] for i in range(self.minibatch_size)])).to(device)
 
+            self.agent.critic.optimizer.zero_grad()
+            self.agent.actor.optimizer.zero_grad()
+
             for agent_idx in range(self.n_agents):
               critic_input_ = torch.cat([states_, new_actions.reshape(self.minibatch_size, self.n_actions*self.n_agents)], dim=1)
               critic_value_ = self.agent.target_critic.forward(critic_input_).flatten()
@@ -82,13 +85,11 @@ class MADDPG:
 
               target = rewards[:,agent_idx] + self.agent.gamma*critic_value_
               critic_loss = nn.functional.mse_loss(target, critic_value)
-              self.agent.critic.optimizer.zero_grad()
               critic_loss.backward(retain_graph=True)
 
               mu_critic_input = torch.cat([states, mu.reshape(self.minibatch_size, self.n_actions*self.n_agents)], dim=1)
               actor_loss = self.agent.critic.forward(mu_critic_input).flatten()
               actor_loss = -torch.mean(actor_loss)
-              self.agent.actor.optimizer.zero_grad()
               actor_loss.backward(retain_graph=True)
               
             self.agent.critic.optimizer.step()

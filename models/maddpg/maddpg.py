@@ -62,8 +62,7 @@ class MADDPG:
             mu = []
             for i in range(self.n_agents):
               obs = observations[:,i,:]
-              obs_ = observations_[:,i,:]
-              new_agent_actions = self.agent.target_actor.forward(obs_).detach().cpu().numpy()
+              new_agent_actions = self.agent.target_actor.forward(obs).detach().cpu().numpy()
               new_mu_actions = self.agent.actor.forward(obs).detach().cpu().numpy()
               new_actions.append(new_agent_actions)
               mu.append(new_mu_actions)
@@ -79,17 +78,22 @@ class MADDPG:
             for agent_idx in range(self.n_agents):
               critic_input_ = torch.cat([states_, new_actions.reshape(self.minibatch_size, self.n_actions*self.n_agents)], dim=1)
               critic_value_ = self.agent.target_critic.forward(critic_input_).flatten()
+              # print(f"Target Critic Value: {critic_value_}")
               critic_value_[dones[:,agent_idx]] = 0.0
               critic_input = torch.cat([states, actions.reshape(self.minibatch_size, self.n_actions*self.n_agents)], dim=1)
               critic_value = self.agent.critic.forward(critic_input).flatten()
+              # print(f"Critic Value: {critic_value}")
 
               target = rewards[:,agent_idx] + self.agent.gamma*critic_value_
+              # print(f"Target: {target}")
               critic_loss = nn.functional.mse_loss(target, critic_value)
+              # print(f"Critic Loss: {critic_loss}")
               critic_loss.backward(retain_graph=True)
 
               mu_critic_input = torch.cat([states, mu.reshape(self.minibatch_size, self.n_actions*self.n_agents)], dim=1)
               actor_loss = self.agent.critic.forward(mu_critic_input).flatten()
               actor_loss = -torch.mean(actor_loss)
+              # print(f"Actor Loss: {actor_loss}")
               actor_loss.backward(retain_graph=True)
               
             self.agent.critic.optimizer.step()

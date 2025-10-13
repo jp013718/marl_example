@@ -77,6 +77,7 @@ class MADDPG:
 
             for agent_idx in range(self.n_agents):
               critic_input_ = torch.cat([states_, new_actions.reshape(self.minibatch_size, self.n_actions*self.n_agents)], dim=1)
+              # print(critic_input_)
               critic_value_ = self.agent.target_critic.forward(critic_input_).flatten()
               # print(f"Target Critic Value: {critic_value_}")
               critic_value_[dones[:,agent_idx]] = 0.0

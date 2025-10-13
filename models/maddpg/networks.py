@@ -20,7 +20,7 @@ class Actor(nn.Module):
 
         self.to(self.device)
 
-    def forward(self, x):
+    def forward(self, x) -> torch.tensor:
         x1 = nn.functional.relu(self.fc1(x))
         x2 = nn.functional.relu(self.fc2(x1))
         pi = nn.functional.tanh(self.pi(x2))

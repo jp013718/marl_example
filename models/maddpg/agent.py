@@ -18,12 +18,12 @@ class Agent:
 
     def choose_action(self, obs):
         observation = torch.tensor(obs, dtype=torch.float).to(self.actor.device)
-        action = self.actor.forward(observation)
-        noise = torch.tensor(np.random.random(size=2)*2-1).to(self.actor.device)
+        action = self.actor.forward(observation).detach().cpu().numpy()
+        noise = (np.random.random(size=2)*2-1)/4
         action = action+noise
-        action.clip(min=-1, max=1)
+        action = action.clip(min=-1, max=1)
         
-        return action.detach().cpu().numpy()
+        return action
 
     def update_network_parameters(self, tau=None):
         if tau is None:

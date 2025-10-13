@@ -77,7 +77,8 @@ if __name__ == "__main__":
   for agent_type in agent_types.values():
     actor_dims.append(np.array(list(flatten_dict(env.observation_space(agent_type)).values())).shape[0])
     n_actions.append(env.action_space(agent_type).shape[0])
-  critic_dims = len(list(flatten_dict(env._get_infos())))
+  # critic_dims = len(list(flatten_dict(env._get_infos())))
+  critic_dims = len(list(flatten_dict(env.observation_space("agent"))))*n_agents
 
   maddpg_agents = MADDPG(actor_dims[0], critic_dims, n_agents, 0, n_actions[0], minibatch_size=args.minibatch_size, fc1=args.fc1, fc2=args.fc2, alpha=args.alpha, beta=args.beta, gamma=args.gamma, tau=args.tau, scenario=scenario, chkpt_dir='tmp/maddpg/')
 
@@ -141,10 +142,10 @@ if __name__ == "__main__":
       obs_, rewards, terminated, truncated, infos_ = env.step(actions_dict)
       obs_ = unpack_dict(obs_)
       infos_ = flatten_dict(infos_)
-      state = np.array(list(infos.values()))
-      state_ = np.array(list(infos_.values()))
-      # state = obs_list_to_state_vector(obs)
-      # state_ = obs_list_to_state_vector(obs_)
+      # state = np.array(list(infos.values()))
+      # state_ = np.array(list(infos_.values()))
+      state = obs_list_to_state_vector(obs)
+      state_ = obs_list_to_state_vector(obs_)
 
       done = list(terminated.values()) if not all(truncated.values()) else list(truncated.values())
       rewards_list = np.array(list(rewards.values()))

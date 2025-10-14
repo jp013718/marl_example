@@ -41,23 +41,27 @@ class MADDPG:
         return actions
 
     def learn(self, memory: ReplayBuffer):
+        # Don't learn off memories until the size of the memory buffer is at least equivalent to one batch...
         if not memory.ready():
             return
         
+        # Sample the buffer and split it into the minibatches
         memories = memory.sample_buffer()
         minibatches = np.array_split(memories, len(memories)//self.minibatch_size)
 
         device = self.agent.actor.device
 
+        # Train off of minibatches
         for minibatch in minibatches:
+            # Unpack information from minibatches
             observations = torch.tensor(np.array([entry['observation'] for entry in minibatch], dtype=np.float64)).type(torch.float).to(device)
             states = torch.tensor(np.array([entry['state'] for entry in minibatch], dtype=np.float64)).type(torch.float).to(device)
             actions = torch.tensor(np.array([entry['action'] for entry in minibatch], dtype=np.float64)).type(torch.float).to(device)
             rewards = torch.tensor(np.array([entry['reward'] for entry in minibatch], dtype=np.float64)).type(torch.float).to(device)
-            observations_ = torch.tensor(np.array([entry['observation_'] for entry in minibatch], dtype=np.float64)).type(torch.float).to(device)
             states_ = torch.tensor(np.array([entry['state_'] for entry in minibatch], dtype=np.float64)).type(torch.float).to(device)
             dones = torch.tensor(np.array([entry['done'] for entry in minibatch], dtype=bool)).to(device)
 
+            # Calculate new actions from actor and target actor
             new_actions = []
             mu = []
             for i in range(self.n_agents):
@@ -72,31 +76,49 @@ class MADDPG:
             mu = np.array(mu)
             mu = torch.tensor(np.array([mu[:,i,:] for i in range(self.minibatch_size)])).to(device)
 
+            # Zero optimizer gradients
             self.agent.critic.optimizer.zero_grad()
             self.agent.actor.optimizer.zero_grad()
 
+            # Get the critic and target critic values for the state/action pairs for each agent and perform back propagation
             for agent_idx in range(self.n_agents):
+              # Get target critic input
               critic_input_ = torch.cat([states_, new_actions.reshape(self.minibatch_size, self.n_actions*self.n_agents)], dim=1)
-              # print(critic_input_)
+              # Swap the current agent's observations and actions to the front by using the transpose of the target critic input
+              c_ = critic_input_.T
+              c_[[0, agent_idx]] = c_[[agent_idx, 0]]
+              c_[[self.n_agents, agent_idx+self.n_agents]] = c_[[agent_idx+self.n_agents, self.n_agents]]
+              critic_input_ = c_.T
+              # Get target critic value
               critic_value_ = self.agent.target_critic.forward(critic_input_).flatten()
-              # print(f"Target Critic Value: {critic_value_}")
+              # Set the value for any observation for which the agent had already completed the episode to 0
               critic_value_[dones[:,agent_idx]] = 0.0
+              
+              # Repeat above processes for the critic
               critic_input = torch.cat([states, actions.reshape(self.minibatch_size, self.n_actions*self.n_agents)], dim=1)
+              c = critic_input.T
+              c[[0, i]] = c[[i, 0]]
+              c[[self.n_agents, agent_idx+self.n_agents]] = c[[agent_idx+self.n_agents, self.n_agents]]
+              critic_input_ = c.T
               critic_value = self.agent.critic.forward(critic_input).flatten()
-              # print(f"Critic Value: {critic_value}")
 
+              # Compute critic loss and back propogate
               target = rewards[:,agent_idx] + self.agent.gamma*critic_value_
-              # print(f"Target: {target}")
               critic_loss = nn.functional.mse_loss(target, critic_value)
-              # print(f"Critic Loss: {critic_loss}")
               critic_loss.backward(retain_graph=True)
 
+              # Get critic value for the new actions
               mu_critic_input = torch.cat([states, mu.reshape(self.minibatch_size, self.n_actions*self.n_agents)], dim=1)
+              mc = mu_critic_input.T
+              mc[[0, agent_idx]] = mc[[agent_idx, 0]]
+              mc[[self.n_agents, agent_idx+self.n_agents]] = mc[[agent_idx+self.n_agents, self.n_agents]]
+              mu_critic_input = mc.T
+              # Calculate actor loss and back propogate
               actor_loss = self.agent.critic.forward(mu_critic_input).flatten()
               actor_loss = -torch.mean(actor_loss)
-              # print(f"Actor Loss: {actor_loss}")
               actor_loss.backward(retain_graph=True)
               
+            # Step the optimizers and update network parameters
             self.agent.critic.optimizer.step()
             self.agent.actor.optimizer.step()
             self.agent.update_network_parameters()

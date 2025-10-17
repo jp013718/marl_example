@@ -11,14 +11,14 @@ class ReplayBuffer:
 
         self.memory = [{}]*max_size
 
-    def store_transition(self, raw_obs, state, action, reward, state_, done):
+    def store_transition(self, raw_obs, states, action, reward, states_, done):
         mem_idx = self.mem_cntr % self.mem_size
         self.memory[mem_idx] = {
             "observation": raw_obs,
-            "state": state,
+            "states": states,
             "action": action,
             "reward": reward,
-            "state_": state_,
+            "states_": states_,
             "done": done,
         }
         

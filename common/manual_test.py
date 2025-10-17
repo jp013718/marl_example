@@ -108,8 +108,8 @@ if __name__ == "__main__":
   controller = DualShock()
   
   env = MarlEnvironment(
-    n_agents=1,
-    num_near_agents=0,
+    n_agents=2,
+    num_near_agents=1,
     mapsize=50
   )
 

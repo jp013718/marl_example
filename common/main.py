@@ -43,6 +43,20 @@ def action_list_to_action_dict(actions):
   return action_dict
 
 
+def get_states_from_infos(infos: dict):
+  states = []
+  for agent_idx in range(len(infos.values())):
+    state = np.array(list(infos[f"agent_{agent_idx}"].values()))
+    neighbors = list(infos.values())
+    neighbors.pop(agent_idx)
+    neighbors.sort(key=lambda dist: np.sqrt((dist['x']-infos[f'agent_{agent_idx}']['x'])**2+(dist['y']-infos[f'agent_{agent_idx}']['y'])**2))
+    neighbors = np.array([np.array(list(neighbor.values())) for neighbor in neighbors])
+    state = np.concat([state, *neighbors])
+    states.append(state)
+
+  return states
+    
+
 if __name__ == "__main__":
   parser = argparse.ArgumentParser()
   parser.add_argument('-t', '--train', action='store_true')
@@ -77,8 +91,8 @@ if __name__ == "__main__":
   for agent_type in agent_types.values():
     actor_dims.append(np.array(list(flatten_dict(env.observation_space(agent_type)).values())).shape[0])
     n_actions.append(env.action_space(agent_type).shape[0])
-  # critic_dims = len(list(flatten_dict(env._get_infos())))
-  critic_dims = len(list(flatten_dict(env.observation_space("agent"))))*n_agents
+  critic_dims = len(list(flatten_dict(env._get_infos())))
+  # critic_dims = len(list(flatten_dict(env.observation_space("agent"))))*n_agents
 
   maddpg_agents = MADDPG(actor_dims[0], critic_dims, n_agents, 0, n_actions[0], minibatch_size=args.minibatch_size, fc1=args.fc1, fc2=args.fc2, alpha=args.alpha, beta=args.beta, gamma=args.gamma, tau=args.tau, scenario=scenario, chkpt_dir='tmp/maddpg/')
 
@@ -104,7 +118,6 @@ if __name__ == "__main__":
   for i in range(N_GAMES):
     obs, infos = env.reset()
     obs = unpack_dict(obs)
-    infos = flatten_dict(infos)
     score = 0
     terminated = {agent: False for agent in env.agents}
     truncated = {agent: False for agent in env.agents}
@@ -141,21 +154,21 @@ if __name__ == "__main__":
 
       obs_, rewards, terminated, truncated, infos_ = env.step(actions_dict)
       obs_ = unpack_dict(obs_)
-      infos_ = flatten_dict(infos_)
-      # state = np.array(list(infos.values()))
-      # state_ = np.array(list(infos_.values()))
-      state = obs_list_to_state_vector(obs)
-      state_ = obs_list_to_state_vector(obs_)
+      # state = obs_list_to_state_vector(obs)
+      # state_ = obs_list_to_state_vector(obs_)
+
+      states = get_states_from_infos(infos)
+      states_ = get_states_from_infos(infos_)
 
       done = list(terminated.values()) if not all(truncated.values()) else list(truncated.values())
       rewards_list = np.array(list(rewards.values()))
 
       memories.store_transition(
         obs,
-        state,
+        states,
         actions,
         rewards_list,
-        state_,
+        states_,
         done
       )
 

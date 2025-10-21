@@ -2,6 +2,7 @@ import sys
 sys.path.append("..")
 import hid
 import threading
+import argparse
 from time import sleep
 
 from environment.envs.marl_env import MarlEnvironment
@@ -105,11 +106,17 @@ class DualShock(object):
           self._assign_DPad(0, 0, 0, 0)
 
 if __name__ == "__main__":
+  parser = argparse.ArgumentParser()
+  parser.add_argument('-n', '--num_agents', default=1, type=int)
+  parser.add_argument('-k', '--k_near_agents', default=0, type=int)
+
+  args = parser.parse_args()
+  
   controller = DualShock()
   
   env = MarlEnvironment(
-    n_agents=2,
-    num_near_agents=1,
+    n_agents=args.num_agents,
+    num_near_agents=args.k_near_agents,
     mapsize=50
   )
 

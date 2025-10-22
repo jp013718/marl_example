@@ -135,8 +135,7 @@ if __name__ == "__main__":
       if evaluate:
         env.render()
 
-      if i < N_EXPLORATION_GAMES and args.train and args.checkpoint is not None:
-        # actions_dict = {}
+      if i < N_EXPLORATION_GAMES and args.train and args.checkpoint is None:
         with Pool(n_agents) as p:
           actions = p.starmap(env.action_space('agent').sample, [() for _ in range(n_agents)])
       else:

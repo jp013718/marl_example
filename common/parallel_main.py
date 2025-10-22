@@ -143,19 +143,15 @@ if __name__ == "__main__":
         actions = maddpg_agents.choose_action(obs)
         actions = actions*np.array([env.max_angular_speed, env.max_speed/2])+np.array([0, env.max_speed/2])
       
-      actions_list = []
       for agent_idx, term in enumerate(terminated.values()):
         if term:
-          actions_list.append(np.array([0, -1]))
-          actions[agent_idx] = np.array([0, -1])
-        else:
-          actions_list.append((actions[agent_idx]))
+          actions[agent_idx] = np.array([0, 0])
 
       if args.eval:
         print(actions)
 
       with Pool(n_agents) as p:
-        step_result = p.starmap(env.step, [(agent_idx, actions_list[agent_idx]) for agent_idx in range(n_agents)])
+        step_result = p.starmap(env.step, [(agent_idx, actions[agent_idx]) for agent_idx in range(n_agents)])
       env.timestep += 1
 
       obs_ = {f'agent_{i}': val[0] for i, val in enumerate(step_result)}

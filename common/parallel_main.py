@@ -156,7 +156,8 @@ if __name__ == "__main__":
 
       with Pool(n_agents) as p:
         step_result = p.starmap(env.step, [(agent_idx, actions_list[agent_idx]) for agent_idx in range(n_agents)])
-        # obs_, rewards, terminated, truncated, infos_ = env.step(actions_dict)
+      env.timestep += 1
+
       obs_ = {f'agent_{i}': val[0] for i, val in enumerate(step_result)}
       rewards = {f'agent_{i}': val[1] for i, val in enumerate(step_result)}
       terminated = {f'agent_{i}': val[2] for i, val in enumerate(step_result)}

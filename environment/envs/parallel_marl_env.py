@@ -112,10 +112,11 @@ class ParallelMarlEnvironment(ParallelEnv):
 
 
   def step(self, agent_idx, action):
-
+    # Actions are formatted as [angular_vel, speed]
     self.agents_angular_vel[agent_idx] = action[0]
     self.agents_speed[agent_idx] = action[1]
 
+    # Update agent positions based on action
     self.agents_heading[agent_idx] += self.agents_angular_vel[agent_idx]
     self.agents_heading[agent_idx] = self.agents_heading[agent_idx]%(2*np.pi)
     self.agents_x[agent_idx] += self.agents_speed[agent_idx]*np.cos(self.agents_heading[agent_idx])
@@ -128,8 +129,6 @@ class ParallelMarlEnvironment(ParallelEnv):
     terminations = self._get_terms(agent_idx)
     truncations = self._get_trunc()
     info = self._get_info(agent_idx)
-
-    self.timestep += 1
 
     return observation, rewards, terminations, truncations, info
 

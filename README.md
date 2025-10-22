@@ -77,3 +77,5 @@ Used to change the gamma parameter for MADDPG during training. Default value is 
 --tau [n]
 ```
 Used to change the tau parameter for MADDPG during training. Default value is 0.01.
+## Running the parallelized training script
+The script parallel_main.py can be run with the same arguments as main.py for a parallelized environment, offering significant speed improvements for training n>1 agents.

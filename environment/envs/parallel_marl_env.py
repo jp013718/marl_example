@@ -63,8 +63,6 @@ class ParallelMarlEnvironment(ParallelEnv):
     self.agents_angular_accel = [0]*self.num_agents
     self.agents_accel = [0]*self.num_agents
 
-    self.terms = None
-
     self.timestep = 0
     self.possible_agents = ["agent"]
 
@@ -128,7 +126,7 @@ class ParallelMarlEnvironment(ParallelEnv):
     observation = self._get_obs(agent_idx)
     rewards = self._get_rewards(agent_idx, observation, action)
     terminations = self._get_terms(agent_idx)
-    truncations = self._get_trunc(agent_idx)
+    truncations = self._get_trunc()
     info = self._get_info(agent_idx)
 
     self.timestep += 1
@@ -193,22 +191,20 @@ class ParallelMarlEnvironment(ParallelEnv):
     return self.terms
 
 
-  def _get_truncs(self):
-    return {agent: False if self.timestep < self.max_timesteps else True for agent in self.agents}
+  def _get_trunc(self):
+    return False if self.timestep < self.max_timesteps else True
   
 
   # Get environment infos (Critic inputs for MADDPG)
   def _get_info(self, agent_idx):
     return {
-      self.agents[agent_idx]: {
-        "x": self.agents_x[agent_idx],
-        "y": self.agents_y[agent_idx],
-        "heading": self.agents_heading[agent_idx],
-        "speed": self.agents_speed[agent_idx],
-        "angular_vel": self.agents_angular_vel[agent_idx],
-        "target_x": self.targets_x[agent_idx],
-        "target_y": self.targets_y[agent_idx],
-      }
+      "x": self.agents_x[agent_idx],
+      "y": self.agents_y[agent_idx],
+      "heading": self.agents_heading[agent_idx],
+      "speed": self.agents_speed[agent_idx],
+      "angular_vel": self.agents_angular_vel[agent_idx],
+      "target_x": self.targets_x[agent_idx],
+      "target_y": self.targets_y[agent_idx],
     }
 
 

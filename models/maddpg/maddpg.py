@@ -100,10 +100,6 @@ class MADDPG:
 
               # Get critic value for the new actions
               mu_critic_input = torch.cat([states[:,agent_idx,:], mu.reshape(self.minibatch_size, self.n_actions*self.n_agents)], dim=1)
-              mc = mu_critic_input.T
-              mc[[0, agent_idx]] = mc[[agent_idx, 0]]
-              mc[[self.n_agents, agent_idx+self.n_agents]] = mc[[agent_idx+self.n_agents, self.n_agents]]
-              mu_critic_input = mc.T
               # Calculate actor loss and back propogate
               actor_loss = self.agent.critic.forward(mu_critic_input).flatten()
               actor_loss = -torch.mean(actor_loss)
@@ -113,3 +109,4 @@ class MADDPG:
             self.agent.critic.optimizer.step()
             self.agent.actor.optimizer.step()
             self.agent.update_network_parameters()
+            torch.cuda.empty_cache()

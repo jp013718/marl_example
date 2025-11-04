@@ -11,6 +11,7 @@ from environment.envs.parallel_marl_env import ParallelMarlEnvironment
 
 import torch
 torch.autograd.set_detect_anomaly(True)
+torch.set_flush_denormal(True)
 
 def obs_list_to_state_vector(observation):
   state = np.array([])
@@ -97,7 +98,7 @@ if __name__ == "__main__":
 
   maddpg_agents = MADDPG(actor_dims[0], critic_dims, n_agents, 0, n_actions[0], minibatch_size=args.minibatch_size, fc1=args.fc1, fc2=args.fc2, alpha=args.alpha, beta=args.beta, gamma=args.gamma, tau=args.tau, scenario=scenario, chkpt_dir='tmp/maddpg/')
 
-  memories = ReplayBuffer(1000000, critic_dims, actor_dims[0], n_actions[0], n_agents, batch_size=1024*n_agents)
+  memories = ReplayBuffer(1000000, actor_dims[0], n_actions[0], n_agents, batch_size=1024*n_agents)
 
   PRINT_INTERVAL = 10
   N_GAMES = args.duration

@@ -1,7 +1,7 @@
 import numpy as np
 
 class ReplayBuffer:
-    def __init__(self, max_size, critic_dims, actor_dims, n_actions, n_agents, batch_size):
+    def __init__(self, max_size, actor_dims, n_actions, n_agents, batch_size):
         self.mem_size = max_size
         self.mem_cntr = 0
         self.n_agents = n_agents

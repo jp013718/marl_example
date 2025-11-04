@@ -109,4 +109,3 @@ class MADDPG:
             self.agent.critic.optimizer.step()
             self.agent.actor.optimizer.step()
             self.agent.update_network_parameters()
-            torch.cuda.empty_cache()

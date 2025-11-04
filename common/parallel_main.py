@@ -194,5 +194,6 @@ if __name__ == "__main__":
         best_score = avg_score
       if i % save_freq == 0 and i > 1: 
         maddpg_agents.save_checkpoint("recent")
+        torch.cuda.empty_cache()
     if i % PRINT_INTERVAL == 0 and i > 0:
       print(f'episode: {i}; avg_score: {avg_score:.1f}')

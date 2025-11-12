@@ -142,8 +142,8 @@ if __name__ == "__main__":
           if term:
             # actions_list.append(np.array([0.5, 0.5]))
             # actions[agent_idx] = np.array([0.5, 0.5])
-            actions_list.append(np.array([0, -1]))
-            actions[agent_idx] = np.array([0, -1])
+            actions_list.append(np.array([0, 0]))
+            actions[agent_idx] = np.array([0, 0])
           else:
             # actions_list.append(2*(actions[agent_idx]-0.5)*np.array([env.max_angular_accel, env.max_accel]))
             actions_list.append((actions[agent_idx])*np.array([env.max_angular_speed, env.max_speed/2])+np.array([0, env.max_speed/2]))

@@ -104,7 +104,7 @@ if __name__ == "__main__":
   N_GAMES = args.duration
   N_EXPLORATION_GAMES = args.random_episodes
   total_steps = 0
-  score_history = []
+  score_history = [0]*100
   evaluate = not args.train
   load_model = not (args.checkpoint is None)
   eval_model = args.checkpoint
@@ -186,8 +186,8 @@ if __name__ == "__main__":
       total_steps += 1
       episode_step += 1
 
-    score_history.append(score)
-    avg_score = np.mean(score_history[-100:])
+    score_history[i%100] = score
+    avg_score = np.mean(score_history)
     if not evaluate:
       if avg_score > best_score and i >= 100 and i > N_EXPLORATION_GAMES:
         maddpg_agents.save_checkpoint("best")
